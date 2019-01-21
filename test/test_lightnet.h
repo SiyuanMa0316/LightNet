@@ -25,17 +25,35 @@
 
 #include <stdio.h>
 #include <check.h>
+#include <math.h>
+#include <tl_check.h>
 
 #ifdef __cplusplus
-extern "C" {
+#define CPPSTART extern "C" {
+#define CPPEND }
 #endif
 
 Suite *make_master_suite(void);
+Suite *make_util_suite(void);
+#ifdef LN_CUDA
+Suite *make_cuda_suite(void);
+#endif
 Suite *make_list_suite(void);
+Suite *make_queue_suite(void);
+Suite *make_graph_suite(void);
+Suite *make_hash_suite(void);
+Suite *make_msg_suite(void);
+Suite *make_param_suite(void);
+Suite *make_tensor_suite(void);
+Suite *make_op_suite(void);
+Suite *make_parse_suite(void);
+Suite *make_mem_suite(void);
+Suite *make_pass_suite(void);
+Suite *make_opimpl_suite(void);
 /* end of declarations */
 
 #ifdef __cplusplus
-}
+CPPEND
 #endif
 
 #endif /* _TEST_LIGHTNET_H_ */

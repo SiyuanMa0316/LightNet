@@ -1,115 +1,85 @@
-.SUFFIXES:
-TARGET = lightnet
-CC = gcc
-CXX = g++
-CUCC = nvcc
+include ../config.mk
+include ../common.mk
 
-CFLAGS = -Wall
-CXXFLAGS = -std=c++11 -Wall
-CUFLAGS = -m64 -arch=sm_35 -ccbin $(CXX)
-LDFLAGS = $(CFLAGS)
+TARGET ?= lightnet
+TARGET_BIN = $(TARGET)
+LIBTARGET_A = lib$(TARGET).a
 
-ifdef DEBUG
-CFLAGS += -g -O0 -DLN_DEBUG
-CXXFLAGS += -g -O0 -DLN_DEBUG
-CUFLAGS += -lineinfo
-LDFLAGS += -g -O0
-else
-# CFLAGS += -O3 -DNDEBUG
-# CXXFLAGS += -O3 -DNDEBUG
-CFLAGS += -O3
-CXXFLAGS += -O3
-CUFLAGS +=
-LDFLAGS += -O3
+SRC = $(wildcard *.c)
+SRC += $(wildcard *.cpp)
+SRC += $(wildcard *.cc)
+SRC += $(wildcard *.cu)
+SRC += $(wildcard op/*.c)
+SRC += $(wildcard op/*.cc)
+SRC += $(wildcard op/*.cu)
+SRC += $(wildcard op/auto/*.c)
+SRC += $(wildcard op/auto/*.cc)
+SRC += $(wildcard op/auto/*.cu)
+SRC += $(wildcard arch/*.c)
+SRC += $(wildcard arch/*.cc)
+SRC += $(wildcard arch/*.cu)
+NORMAL_SRC = $(filter-out %cuda.c %cuda.cu %cudnn.c %cudnn.cu %tensorrt.c %tensorrt.cc,$(SRC))
+CUDA_SRC = $(filter %cuda.c %cuda.cu,$(SRC))
+CUDNN_SRC = $(filter %cudnn.c %cudnn.cu,$(SRC))
+TENSORRT_SRC = $(filter %tensorrt.c %tensorrt.cc,$(SRC))
+
+OBJDIR = obj
+OBJS   = $(patsubst %.c,$(OBJDIR)/%.o,$(filter %.c,$(NORMAL_SRC)))
+OBJS  += $(patsubst %.cpp,$(OBJDIR)/%.o,$(filter %.cpp,$(NORMAL_SRC)))
+OBJS  += $(patsubst %.cc,$(OBJDIR)/%.o,$(filter %.cc,$(NORMAL_SRC)))
+ifeq ($(WITH_CUDA), yes)
+OBJS  += $(patsubst %.cu,$(OBJDIR)/%.o,$(filter %.cu,$(CUDA_SRC)))
+OBJS  += $(patsubst %.c,$(OBJDIR)/%.o,$(filter %.c,$(CUDA_SRC)))
+ifeq ($(WITH_CUDNN), yes)
+OBJS  += $(patsubst %.cu,$(OBJDIR)/%.o,$(filter %.cu,$(CUDNN_SRC)))
+OBJS  += $(patsubst %.c,$(OBJDIR)/%.o,$(filter %.c,$(CUDNN_SRC)))
+endif
+ifeq ($(WITH_TENSORRT), yes)
+OBJS  += $(patsubst %.cc,$(OBJDIR)/%.o,$(filter %.cc,$(TENSORRT_SRC)))
+OBJS  += $(patsubst %.c,$(OBJDIR)/%.o,$(filter %.c,$(TENSORRT_SRC)))
+endif
 endif
 
-ifeq "$(MAKECMDGOALS)" "libso"
-CFLAGS += -fPIC
-CUFLAGS += --compiler-options '-fPIC' --linker-options '-Wl,--no-undefined -shared' -shared
-LDFLAGS += -shared -Wl,--no-undefined
-LIBTARGET = lib$(TARGET).so
-endif
-
-ifdef VERBOSE
-AT =
-else
-AT = @
-endif
-
-AR = ar cr
-ECHO = @echo
-SHELL = /bin/sh
-
-define concat
-  $1$2$3$4$5$6$7$8
+define make-obj-dir
+$(AT)if [ ! -d $(OBJDIR) ]; then mkdir -p $(OBJDIR)/op/auto; \
+mkdir -p $(OBJDIR)/arch; fi
 endef
 
-#$(call make-depend,source-file,object-file,depend-file)
-define make-depend-c
-  $(AT)$(CC) -MM -MF $3 -MP -MT $2 $(CFLAGS) $1
-endef
+.PHONY: all bin liba clean
+all: bin liba
 
-define make-depend-cxx
-  $(AT)$(CXX) -MM -MF $3 -MP -MT $2 $(CFLAGS) $1
-endef
+bin: $(OBJDIR)/$(TARGET_BIN)
 
-define make-depend-cu
-  $(AT)$(CUCC) -M $(CUFLAGS) $1 > $3.$$$$; \
-  sed 's,.*\.o[ :]*,$2 : ,g' < $3.$$$$ > $3; \
-  rm -f $3.$$$$
-endef
+liba: $(OBJDIR)/$(LIBTARGET_A)
 
-SRCS = *.cpp *.cc *.c *.cu
-OUTDIR = .
-OBJDIR = $(call concat,$(OUTDIR),/obj)
-OBJS   = $(patsubst %.c, $(OBJDIR)/%.o, $(wildcard *.c))
-OBJS  += $(patsubst %.cpp, $(OBJDIR)/%.o, $(wildcard *.cpp))
-OBJS  += $(patsubst %.cc, $(OBJDIR)/%.o, $(wildcard *.cc))
-CUOBJS = $(patsubst %.cu, $(OBJDIR)/%.o, $(wildcard *.cu))
-
-TRIPLE?=x86_64-linux
-CUDA_INSTALL_DIR = /usr/local/cuda-8.0
-CUDA_LIBDIR = lib
-INCPATHS    =-I"$(CUDA_INSTALL_DIR)/include" -I"/usr/local/include"
-LIBPATHS    =-L"$(CUDA_INSTALL_DIR)/targets/$(TRIPLE)/$(CUDA_LIBDIR)" -L"/usr/local/lib" -L"/usr/local/cuda/lib64" -L"$(CUDA_INSTALL_DIR)/$(CUDA_LIBDIR)"
-LIBS = $(LIBPATHS) -lcudart -lcudart_static -lm
-CFLAGS += $(INCPATHS)
-CXXFLAGS += $(INCPATHS)
-CUFLAGS += $(INCPATHS)
-LDFLAGS += $(LIBS)
-
-.PHONY: all libso
-all: $(OUTDIR)/$(TARGET)
-libso: $(OUTDIR)/$(LIBTARGET)
-
-$(OUTDIR)/$(LIBTARGET): $(OBJS) $(CUOBJS)
-	$(ECHO) Linking: $^
+$(OBJDIR)/$(TARGET_BIN): $(OBJS)
+	$(ECHO) Linking: $@
 	$(AT)$(CC) -o $@ $^ $(LDFLAGS)
 
-$(OUTDIR)/$(TARGET): $(OBJS) $(CUOBJS)
-	$(ECHO) Linking: $^
-	$(AT)$(CC) -o $@ $^ $(LDFLAGS)
+$(OBJDIR)/$(LIBTARGET_A): $(OBJS)
+	$(ECHO) Packing: $@
+	$(AT)$(AR) $@ $^
 
 $(OBJDIR)/%.o: %.c
-	$(AT)if [ ! -d $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi
+	$(call make-obj-dir)
 	$(call make-depend-c,$<,$@,$(subst .o,.d,$@))
 	$(ECHO) Compiling: $<
 	$(AT)$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.o: %.cpp
-	$(AT)if [ ! -d $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi
+	$(call make-obj-dir)
 	$(call make-depend-cxx,$<,$@,$(subst .o,.d,$@))
 	$(ECHO) Compiling: $<
 	$(AT)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.o: %.cc
-	$(AT)if [ ! -d $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi
+	$(call make-obj-dir)
 	$(call make-depend-cxx,$<,$@,$(subst .o,.d,$@))
 	$(ECHO) Compiling: $<
 	$(AT)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.o: %.cu
-	$(AT)if [ ! -d $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi
+	$(call make-obj-dir)
 	$(call make-depend-cu,$<,$@,$(subst .o,.d,$@))
 	$(ECHO) Compiling CUDA: $<
 	$(AT)$(CUCC) $(CUFLAGS) -c -o $@ $<
@@ -118,5 +88,8 @@ clean:
 	rm -rf $(OBJDIR)
 
 ifneq "$(MAKECMDGOALS)" "clean"
-  -include $(OBJDIR)/*.d
+-include $(OBJDIR)/*.d
+-include $(OBJDIR)/op/*.d
+-include $(OBJDIR)/op/auto/*.d
+-include $(OBJDIR)/arch/*.d
 endif
