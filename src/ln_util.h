@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 enum ln_bool {
     LN_FALSE = 0,
@@ -34,10 +35,11 @@ enum ln_bool {
 };
 typedef enum ln_bool ln_bool;
 
-typedef int (*ln_cmp_func)(const void *, const void *);
-typedef void (*ln_free_func)(void *);
-typedef void (*ln_fprint_func) (FILE *, const void *);
-typedef uint32_t (*ln_hash_func)(const void *);
+typedef int (*ln_cmp_func)(const void *p1, const void *p2);
+typedef void (*ln_free_func)(void *p);
+typedef void (*ln_fprint_func) (FILE *fp, const void *p);
+typedef uint32_t (*ln_hash_func)(const void *p);
+typedef void *(*ln_copy_func)(void *dst, const void *src, size_t n);
 
 #define ln_free free
 
@@ -68,6 +70,7 @@ uint32_t ln_direct_hash(const void *key);
 int ln_direct_cmp(const void *p1, const void *p2);
 uint32_t ln_str_hash(const void *key);
 int ln_str_cmp(const void *p1, const void *p2);
+double ln_clock(void);
 
 void ln_err_msg(const char *fmt, ...);
 void ln_err_cont(int error, const char *fmt, ...);

@@ -23,6 +23,7 @@
 #include "ln_context.h"
 #include "ln_json.h"
 #include "ln_pass.h"
+#include "ln_name.h"
 
 ln_context *ln_context_create(void)
 {
@@ -122,7 +123,6 @@ void ln_context_remove_op(ln_context *ctx, ln_list **position)
 void ln_context_add_op(ln_context *ctx, ln_list **position, ln_op *new_op)
 {
     ln_list *list = NULL;
-
     list = ln_list_append(list, new_op);
     ln_context_replace_ops(ctx, position, 0, list);
 }
@@ -144,7 +144,10 @@ void ln_context_alloc_mem(ln_context *ctx)
     int i;
 
     for (i = LN_MEM_NONE+1; i < LN_MEM_TYPE_SIZE; i++) {
-        ctx->mem_starts[i] = ln_mtype_infos[i].alloc_func(ctx->mem_sizes[i]);
+        ctx->mem_starts[i] = ln_mem_type_info(i).alloc_func(ctx->mem_sizes[i]);
+        if (ln_mem_type_info(i).memset_func)
+            ln_mem_type_info(i).memset_func(ctx->mem_starts[i], 0,
+                                            ctx->mem_sizes[i]);
         ln_msg_debug("allocate memory %s: %lu bytes at address %p",
                      ln_mem_type_name(i), ctx->mem_sizes[i],
                      ctx->mem_starts[i]);
@@ -180,7 +183,7 @@ void ln_context_dealloc_mem(ln_context *ctx)
         ln_msg_debug("free memory %s: %lu bytes at address %p",
                      ln_mem_type_name(i), ctx->mem_sizes[i],
                      ctx->mem_starts[i]);
-        ln_mtype_infos[i].free_func(ctx->mem_starts[i]);
+        ln_mem_type_info(i).free_func(ctx->mem_starts[i]);
         ctx->mem_starts[i] = 0;
     }
 }
@@ -198,12 +201,14 @@ void ln_context_compile(ln_context *ctx, const char *target)
     ln_pass_preprocess(ctx);
     arch = ln_hash_find(LN_ARCH.arch_table, target);
     ln_pass_expander(ctx, arch->ep_funcs);
+    ln_pass_preprocess(ctx);
     ln_pass_combiner(ctx, 2, arch->cb_funcs);
 
     /* make ops consistent */
     ln_op_list_do_post_run(ctx->ops);
     assert(ln_hash_size(ctx->tensor_table) == 0);
     ln_op_list_do_pre_run(ctx->ops);
+
     ln_pass_mem_plan(ctx);
 }
 
@@ -215,15 +220,21 @@ void ln_context_print(const ln_context *ctx, const char *outfile)
         ln_json_print_file(outfile, ctx);
 }
 
-void ln_context_load(ln_context *ctx)
+void ln_context_load(ln_context *ctx, const char *datafile)
 {
     ln_context_alloc_mem(ctx);
+    if (datafile)
+        ln_tensor_table_load_trt_weight_file(ctx->tensor_table, datafile);
     ln_op_list_do_static_run(ctx->ops);
 }
 
 void ln_context_run(const ln_context *ctx)
 {
+    double t1, t2;
+    t1 = ln_clock();
     ln_op_list_do_run(ctx->ops);
+    t2 = ln_clock();
+    ln_msg_info("run time: %.5fs", t2 - t1);
 }
 
 void ln_context_unload(ln_context *ctx)

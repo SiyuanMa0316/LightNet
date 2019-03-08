@@ -39,6 +39,15 @@ extern ln_op ln_opimpl_upsample_cuda;
 extern ln_op ln_opimpl_maxreduce_arg_cuda;
 extern ln_op ln_opimpl_print_cuda;
 extern ln_op ln_opimpl_sigmoid_cuda;
+extern ln_op ln_opimpl_sort1d_cuda;
+extern ln_op ln_opimpl_arange_cuda;
+extern ln_op ln_opimpl_sort1d_by_key_cuda;
+extern ln_op ln_opimpl_transform_bboxSQD_cuda;
+extern ln_op ln_opimpl_rearange_cuda;
+extern ln_op ln_opimpl_pick1d_cuda;
+extern ln_op ln_opimpl_fprint_cuda;
+extern ln_op ln_opimpl_lrelu_cuda;
+extern ln_op ln_opimpl_detect_yolov3_cuda;
 /* end of declare cuda ops */
 
 static ln_op *ops_cuda[] = {
@@ -59,6 +68,15 @@ static ln_op *ops_cuda[] = {
     &ln_opimpl_maxreduce_arg_cuda,
     &ln_opimpl_print_cuda,
     &ln_opimpl_sigmoid_cuda,
+    &ln_opimpl_sort1d_cuda,
+    &ln_opimpl_sort1d_by_key_cuda,
+    &ln_opimpl_arange_cuda,
+    &ln_opimpl_transform_bboxSQD_cuda,
+    &ln_opimpl_rearange_cuda,
+    &ln_opimpl_pick1d_cuda,
+    &ln_opimpl_fprint_cuda,
+    &ln_opimpl_lrelu_cuda,
+    &ln_opimpl_detect_yolov3_cuda,
 /* end of init cuda ops */
     NULL
 };
@@ -80,9 +98,23 @@ static inline int can_replace(const char *optype)
         ln_streq(optype, "softmax") ||
         ln_streq(optype, "concat") ||
         ln_streq(optype, "upsample") ||
+        ln_streq(optype, "sort1d") ||
+        ln_streq(optype, "sort1d_by_key") ||
+        ln_streq(optype, "arange") ||
+        ln_streq(optype, "rearange") ||
+        ln_streq(optype, "transform_bboxSQD") ||
+        ln_streq(optype, "pick1d") ||
+        ln_streq(optype, "lrelu") ||
+        ln_streq(optype, "detect_yolov3") ||
         ln_streq(optype, "print"))
         return 1;
     return 0;
+
+    /* for (int i = 0; ops_cuda[i]; i++) { */
+    /*     if (ln_streq(ops_cuda[i]->op_arg->optype, optype)) */
+    /*         return 1; */
+    /* } */
+    /* return 0; */
 }
 
 static ln_list *cb_func_single_replace(const ln_list *ops, size_t size,

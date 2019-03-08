@@ -9,7 +9,7 @@
 *.el
 *.i
 *out.json
-*test.json
+test.json
 .clang_complete
 vgcore*
 config.mk
@@ -22,3 +22,5 @@ GRTAGS
 GTAGS
 obj/
 build/
+
+debug/

@@ -39,6 +39,15 @@ extern ln_op ln_opimpl_upsample;
 extern ln_op ln_opimpl_maxreduce_arg;
 extern ln_op ln_opimpl_print;
 extern ln_op ln_opimpl_sigmoid;
+extern ln_op ln_opimpl_sort1d;
+extern ln_op ln_opimpl_sort1d_by_key;
+extern ln_op ln_opimpl_arange;
+extern ln_op ln_opimpl_transform_bboxSQD;
+extern ln_op ln_opimpl_rearange;
+extern ln_op ln_opimpl_pick1d;
+extern ln_op ln_opimpl_fprint;
+extern ln_op ln_opimpl_lrelu;
+extern ln_op ln_opimpl_detect_yolov3;
 /* end of declare none ops */
 
 /* TODO: use a hash */
@@ -60,6 +69,15 @@ static ln_op *ops_none[] = {
     &ln_opimpl_maxreduce_arg,
     &ln_opimpl_print,
     &ln_opimpl_sigmoid,
+    &ln_opimpl_sort1d,
+    &ln_opimpl_sort1d_by_key,
+    &ln_opimpl_arange,
+    &ln_opimpl_transform_bboxSQD,
+    &ln_opimpl_rearange,
+    &ln_opimpl_pick1d,
+    &ln_opimpl_fprint,
+    &ln_opimpl_lrelu,
+    &ln_opimpl_detect_yolov3,
 /* end of init none ops */
     NULL
 };

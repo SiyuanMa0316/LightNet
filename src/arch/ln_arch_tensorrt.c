@@ -39,6 +39,7 @@ static ln_list *ep_create(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_create_cuda(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_conv2d(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_relu(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_lrelu(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_sigmoid(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_tanh(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_maxpool2d(const ln_op *op, const ln_dfg *dfg, int *match);
@@ -54,6 +55,14 @@ static ln_list *ep_upsample(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_zeros(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_reshape(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_print(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_fprint(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_sort1d(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_sort1d_by_key(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_arange(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_rearange(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_transform_bboxSQD(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_pick1d(const ln_op *op, const ln_dfg *dfg, int *match);
+static ln_list *ep_detect_yolov3(const ln_op *op, const ln_dfg *dfg, int *match);
 static ln_list *ep_tensorrt(const ln_op *op, const ln_dfg *dfg, int *match);
 
 static ln_hash_init_entry init_ep_funcs[] = {
@@ -61,6 +70,7 @@ static ln_hash_init_entry init_ep_funcs[] = {
     {"create_cuda", ep_create_cuda},
     {"conv2d", ep_conv2d},
     {"relu", ep_relu},
+    {"lrelu", ep_lrelu},
     {"sigmoid", ep_sigmoid},
     {"tanh", ep_tanh},
     {"maxpool2d", ep_maxpool2d},
@@ -76,6 +86,14 @@ static ln_hash_init_entry init_ep_funcs[] = {
     {"zeros", ep_zeros},
     {"reshape", ep_reshape},
     {"print", ep_print},
+    {"fprint", ep_fprint},
+    {"sort1d", ep_sort1d},
+    {"sort1d_by_key", ep_sort1d_by_key},
+    {"arange", ep_arange},
+    {"rearange", ep_rearange},
+    {"transform_bboxSQD", ep_transform_bboxSQD},
+    {"pick1d", ep_pick1d},
+    {"detect_yolov3", ep_detect_yolov3},
     {"tensorrt", ep_tensorrt},
     LN_HASH_INIT_ENTRY_NULL
 };
@@ -402,6 +420,40 @@ static void add_activation_to_trt(ln_op *trt_op, const ln_op *op)
     ln_free(param_op_arg_name);
 }
 
+static int check_lrelu(const ln_op *op)
+{
+    return 1;
+}
+
+static void add_lrelu_to_trt(ln_op *trt_op, const ln_op *op)
+{
+    ln_op_arg *trt_arg = trt_op->op_arg;
+    ln_op_arg *op_arg = op->op_arg;
+    ln_tensor_entry *te;
+    ln_param_entry *pe;
+    char *param_op_arg_name;
+    char *param_arg_name;
+
+    param_op_arg_name = create_arg_name_in_params(trt_arg->params, "op");
+    trt_arg->params = ln_param_list_append_string(trt_arg->params,
+                                                  param_op_arg_name, "lrelu");
+
+    add_src(trt_arg, op_arg, param_op_arg_name, "src", "src");
+    add_dst(trt_arg, op_arg, param_op_arg_name, "dst", "dst");
+    te = ln_op_find_tensor_entry(op, "src");
+    check_and_add_batch_size(trt_op, te->tensor->dims[0], op_arg->name);
+
+    pe = ln_param_list_find(op->op_arg->params, "negslope");
+    assert(pe);
+
+    param_arg_name = ln_strcat_delim_alloc(param_op_arg_name, "negslope", '_');
+    trt_arg->params = ln_param_list_append_float(trt_arg->params,
+                                                 param_arg_name,
+                                                 pe->value_float);
+    ln_free(param_arg_name);
+    ln_free(param_op_arg_name);
+}
+
 static int check_pooling(const ln_op *op)
 {
     ln_param_entry *pe;
@@ -424,7 +476,7 @@ static void add_pooling_to_trt(ln_op *trt_op, const ln_op *op)
     char *param_op_arg_name;
     char *tensor_name;
     ln_tensor_entry *te;
-    const char *pool_type;
+    char *pool_type = NULL;
     char *param_arg_name;
     ln_param_entry *pe;
 
@@ -444,7 +496,8 @@ static void add_pooling_to_trt(ln_op *trt_op, const ln_op *op)
     else if (ln_streq(op_arg->optype, "averagepool2d"))
         pool_type = "kAVERAGE";
     else
-        assert(0 && "unsupported pooling type");
+        ln_msg_error("unsupported pooling type %s in add_pooling_to_trt()",
+                     op_arg->optype);
 
     param_arg_name = ln_strcat_delim_alloc(param_op_arg_name, "pooling_type", '_');
     trt_arg->params = ln_param_list_append_string(trt_arg->params,
@@ -543,6 +596,67 @@ static void add_softmax_to_trt(ln_op *trt_op, const ln_op *op)
                                                       param_arg_name, axes);
         ln_free(param_arg_name);
     }
+
+    ln_free(param_op_arg_name);
+}
+
+static int check_elew(const ln_op *op)
+{
+    return 1;
+}
+
+static void add_elew_to_trt(ln_op *trt_op, const ln_op *op)
+{
+    ln_op_arg *trt_arg = trt_op->op_arg;
+    ln_op_arg *op_arg = op->op_arg;
+    char *param_op_arg_name;
+    char *tensor_name;
+    char *elew_type = NULL;
+    ln_tensor_entry *te;
+    ln_param_entry *pe;
+    char *param_arg_name;
+
+    param_op_arg_name = create_arg_name_in_params(trt_arg->params, "op");
+    trt_arg->params = ln_param_list_append_string(trt_arg->params,
+                                                  param_op_arg_name, "elew");
+
+    add_src(trt_arg, op_arg, param_op_arg_name, "src1", "src1");
+    add_src(trt_arg, op_arg, param_op_arg_name, "src2", "src2");
+    add_dst(trt_arg, op_arg, param_op_arg_name, "dst", "dst");
+
+    tensor_name = ln_tensor_list_find_name(op_arg->tensors_in, "src1");
+    te = ln_tensor_table_find(op_arg->tensor_table, tensor_name);
+    check_and_add_batch_size(trt_op, te->tensor->dims[0], op_arg->name);
+
+    tensor_name = ln_tensor_list_find_name(op_arg->tensors_in, "src2");
+    te = ln_tensor_table_find(op_arg->tensor_table, tensor_name);
+    check_and_add_batch_size(trt_op, te->tensor->dims[0], op_arg->name);
+
+    pe = ln_param_list_find(op->op_arg->params, "elew_op");
+    assert(pe);
+    if (ln_streq(pe->value_string, "TL_MUL"))
+        elew_type = "kPROD";
+    else if (ln_streq(pe->value_string, "TL_DIV"))
+        elew_type = "kDIV";
+    else if (ln_streq(pe->value_string, "TL_SUM"))
+        elew_type = "kSUM";
+    else if (ln_streq(pe->value_string, "TL_SUB"))
+        elew_type = "kSUB";
+    else if (ln_streq(pe->value_string, "TL_MAX"))
+        elew_type = "kMAX";
+    else if (ln_streq(pe->value_string, "TL_MIN"))
+        elew_type = "kMIN";
+    else if (ln_streq(pe->value_string, "TL_POW"))
+        elew_type = "kPOW";
+    else
+        ln_msg_error("unsupported elew op type %s in add_elew_to_trt()",
+                     pe->value_string);
+
+    param_arg_name = ln_strcat_delim_alloc(param_op_arg_name, "elew_type", '_');
+    trt_arg->params = ln_param_list_append_string(trt_arg->params,
+                                                  param_arg_name,
+                                                  elew_type);
+    ln_free(param_arg_name);
 
     ln_free(param_op_arg_name);
 }
@@ -680,6 +794,9 @@ static ln_list *ep_create(const ln_op *op, const ln_dfg *dfg, int *match)
          ln_streq(next_op->op_arg->optype, "softmax") ||
          ln_streq(next_op->op_arg->optype, "sigmoid") ||
          ln_streq(next_op->op_arg->optype, "concat") ||
+         /* ln_streq(next_op->op_arg->optype, "fprint") || */
+         ln_streq(next_op->op_arg->optype, "transform_bboxSQD") ||
+         ln_streq(next_op->op_arg->optype, "rearange") ||
          ln_streq(next_op->op_arg->optype, "tensorrt")))
         new_optype = "create_cuda";
     else
@@ -719,6 +836,22 @@ static ln_list *ep_relu(const ln_op *op, const ln_dfg *dfg, int *match)
     trt_op = ln_op_create_with_opname(&ln_opimpl_tensorrt,
                                      op->op_arg->tensor_table);
     add_activation_to_trt(trt_op, op);
+
+    return ln_list_append(NULL, trt_op);
+}
+
+static ln_list *ep_lrelu(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    ln_op *trt_op;
+
+    *match = 1;
+
+    if (!check_lrelu(op))
+        return simple_replace(op, "lrelu_cuda");
+
+    trt_op = ln_op_create_with_opname(&ln_opimpl_tensorrt,
+                                      op->op_arg->tensor_table);
+    add_lrelu_to_trt(trt_op, op);
 
     return ln_list_append(NULL, trt_op);
 }
@@ -863,8 +996,18 @@ static ln_list *ep_batchnorm(const ln_op *op, const ln_dfg *dfg, int *match)
 
 static ln_list *ep_elew(const ln_op *op, const ln_dfg *dfg, int *match)
 {
+    ln_op *trt_op;
+
     *match = 1;
-    return simple_replace(op, "elew_cuda");
+
+    if (!check_elew(op))
+        return simple_replace(op, "elew_cuda");
+
+    trt_op = ln_op_create_with_opname(&ln_opimpl_tensorrt,
+                                      op->op_arg->tensor_table);
+    add_elew_to_trt(trt_op, op);
+
+    return ln_list_append(NULL, trt_op);
 }
 
 static ln_list *ep_maxreduce(const ln_op *op, const ln_dfg *dfg, int *match)
@@ -926,9 +1069,73 @@ static ln_list *ep_print(const ln_op *op, const ln_dfg *dfg, int *match)
     else if (ln_streq(prev_op->op_arg->arch, "tensorrt"))
         optype = "print_cuda";
     else
-        assert(0 && "print's prev op is either of cpu or tensorrt");
+        assert(0 && "print's prev op is either of cpu or cuda or tensorrt");
 
     return simple_replace(op, optype);
+}
+
+static ln_list *ep_fprint(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    ln_tensor_list_entry *tle;
+    ln_op *prev_op;
+    const char *optype;
+
+    *match = 1;
+    tle = ln_tensor_list_find_by_arg_name(op->op_arg->tensors_in, "src");
+    prev_op = ln_dfg_prev(dfg, op, tle->name);
+    assert(prev_op);
+    if (ln_streq(prev_op->op_arg->arch, "cpu"))
+        optype = "fprint_cpu";
+    else if (ln_streq(prev_op->op_arg->arch, "cuda"))
+        optype = "fprint_cuda";
+    else if (ln_streq(prev_op->op_arg->arch, "tensorrt"))
+        optype = "fprint_cuda";
+    else
+        assert(0 && "fprint's prev op is either of cpu or cuda or tensorrt");
+
+    return simple_replace(op, optype);
+}
+
+static ln_list *ep_sort1d(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "sort1d_cuda");
+}
+
+static ln_list *ep_sort1d_by_key(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "sort1d_by_key_cuda");
+}
+
+static ln_list *ep_arange(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "arange_cuda");
+}
+
+static ln_list *ep_rearange(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "rearange_cuda");
+}
+
+static ln_list *ep_transform_bboxSQD(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "transform_bboxSQD_cuda");
+}
+
+static ln_list *ep_pick1d(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "pick1d_cuda");
+}
+
+static ln_list *ep_detect_yolov3(const ln_op *op, const ln_dfg *dfg, int *match)
+{
+    *match = 1;
+    return simple_replace(op, "detect_yolov3_cuda");
 }
 
 static ln_list *ep_tensorrt(const ln_op *op, const ln_dfg *dfg, int *match)

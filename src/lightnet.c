@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-#include "lightnet.h"
+#include "ln_lightnet.h"
 
 int main(int argc, char **argv)
 {
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
         ln_context_print(ctx, option.outfile);
 
     if (option.run) {
-        ln_context_load(ctx);
+        ln_context_load(ctx, option.datafile);
         ln_context_run(ctx);
         ln_context_unload(ctx);
     }

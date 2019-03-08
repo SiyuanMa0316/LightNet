@@ -26,6 +26,7 @@
 #include <err.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <time.h>
 #include <sys/stat.h>
 
 #include "ln_util.h"
@@ -116,16 +117,18 @@ char *ln_read_stdin(void)
     char *p;
     size_t size = 4096;
     size_t read_size;
+    size_t n;
 
     str = ln_alloc(size + 1);
     p = str;
     read_size = size;
     while(1) {
-        fread(p, read_size, 1, stdin);
+        n = fread(p, read_size, 1, stdin);
         if (ferror(stdin))
             err(EXIT_FAILURE, "ln_read_stdin(): read stdin failed");
         if (feof(stdin))
             break;
+        assert(n == 1);
         size <<= 1;
         str = ln_realloc(str, size + 1);
         p = str + (size >> 1);
@@ -219,6 +222,18 @@ uint32_t ln_str_hash(const void *key)
 int ln_str_cmp(const void *p1, const void *p2)
 {
     return strcmp(p1, p2);
+}
+
+double ln_clock(void)
+{
+    struct timespec ts;
+    double time;
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
+        err(EXIT_FAILURE, "ln_clock(): clock_gettime() failed");
+    time = ts.tv_sec + ts.tv_nsec * 1e-9;
+
+    return time;
 }
 
 static void err_doit(int errnoflag, int error, const char *fmt, va_list ap)

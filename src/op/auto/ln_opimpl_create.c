@@ -28,7 +28,9 @@ struct priv_s {
     ln_tensor_entry *dst_entry;
     ln_param_entry  *dtype_entry;
     ln_param_entry  *dims_entry;
+    ln_param_entry  *ran_entry;
     ln_param_entry  *data_entry;
+    ln_param_entry  *from_file_entry;
 };
 
 /* This function should do the parameter checking and tensor shape inference. */
@@ -45,8 +47,12 @@ static void create_pre_run(ln_op_arg *op_arg)
     ln_param_entry       *dtype_entry;
     int                  *dims;
     ln_param_entry       *dims_entry;
+    double               *ran;
+    ln_param_entry       *ran_entry;
     double               *data;
     ln_param_entry       *data_entry;
+    tl_bool_t             from_file;
+    ln_param_entry       *from_file_entry;
     int                   tensors_in_n;
     int                   tensors_out_n;
     int                   params_n;
@@ -66,7 +72,7 @@ static void create_pre_run(ln_op_arg *op_arg)
     ln_opck_tensor_not_defined(dst_entry, dst_name);
 
     params_n = ln_param_list_length(op_arg->params);
-    ln_opck_params_len_eq(params_n, 3);
+    ln_opck_params_len_eq(params_n, 5);
 
     dtype_entry = ln_param_list_find(op_arg->params, "dtype");
     ln_opck_param_exist(dtype_entry, "dtype");
@@ -83,11 +89,25 @@ static void create_pre_run(ln_op_arg *op_arg)
     ln_opck_param_array_int_gt(dims_entry, 0);
     dims = dims;
 
+    ran_entry = ln_param_list_find(op_arg->params, "ran");
+    ln_opck_param_exist(ran_entry, "ran");
+    ln_opck_param_type(ran_entry, LN_PARAM_ARRAY_NUMBER);
+    ln_opck_param_array_len_eq(ran_entry, 2);
+    ran = ran_entry->value_array_double;
+    ran = ran;
+    ln_opck_satisfy(ran[0] <= ran[1]);
+
     data_entry = ln_param_list_find(op_arg->params, "data");
     ln_opck_param_exist(data_entry, "data");
     ln_opck_param_type(data_entry, LN_PARAM_ARRAY_NUMBER);
     data = data_entry->value_array_double;
     data = data;
+
+    from_file_entry = ln_param_list_find(op_arg->params, "from_file");
+    ln_opck_param_exist(from_file_entry, "from_file");
+    ln_opck_param_type(from_file_entry, LN_PARAM_BOOL);
+    from_file = from_file_entry->value_bool;
+    from_file = from_file;
 
     /* define output tensor shape, tensor data should be NULL */
     dst_ndim = dims_entry->array_len;
@@ -106,7 +126,9 @@ static void create_pre_run(ln_op_arg *op_arg)
     priv->dst_entry = dst_entry;
     priv->dtype_entry = dtype_entry;
     priv->dims_entry = dims_entry;
+    priv->ran_entry = ran_entry;
     priv->data_entry = data_entry;
+    priv->from_file_entry = from_file_entry;
     op_arg->priv = priv;
 }
 
@@ -131,7 +153,9 @@ static const char *out_arg_names[] = {
 static const char *param_arg_names[] = {
     "dtype",
     "dims",
+    "ran",
     "data",
+    "from_file",
     NULL
 };
 

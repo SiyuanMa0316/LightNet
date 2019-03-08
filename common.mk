@@ -13,12 +13,14 @@ endif
 
 CFLAGS = -Wall -std=gnu99 -D_GNU_SOURCE
 CXXFLAGS = -std=c++11 -Wall
-CUFLAGS = -m64 -arch=sm_30 -ccbin $(CXX)
+CUFLAGS = -m64 -arch=sm_30 -use_fast_math -ccbin $(CXX)
 LDFLAGS = $(CFLAGS)
 
 ifeq ($(DEBUG), yes)
 CFLAGS += -g -O0 -DLN_DEBUG
 CXXFLAGS += -g -O0 -DLN_DEBUG
+# CFLAGS += -g -O3
+# CXXFLAGS += -g -O3
 CUFLAGS += -lineinfo
 LDFLAGS += -g -O0
 else
@@ -50,7 +52,7 @@ CXXFLAGS += -DLN_TENSORRT
 CUFLAGS += -DLN_TENSORRT
 TENSORRT_INSTALL_DIR ?= /usr
 INCPATHS += -I$(TENSORRT_INSTALL_DIR)/include
-LDFLAGS += -L$(TENSORRT_INSTALL_DIR)/lib -lnvinfer
+LDFLAGS += -L$(TENSORRT_INSTALL_DIR)/lib -lnvinfer -lnvinfer_plugin
 endif
 endif
 

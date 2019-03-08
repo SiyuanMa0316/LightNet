@@ -5,13 +5,19 @@ backends.
 
 ## Getting Started
 
-* [Overview](Getting-Started.md#Overview)
-* [Installation](Getting-Started.md#Installation)
-* [Usage](Getting-Started.md#Usage)
+* [Overview](Getting-Started.md#overview)
+* [Installation](Getting-Started.md#installation)
+* [Usage](Getting-Started.md#usage)
 
-## Documents
+## Documentation
+
+* [Project Structure](Documentation/Project-Structure.md)
+* [Build Options](Documentation/Build-Options.md)
+* [Intermediate Representation](Documentation/Intermediate-Representation.md)
+* [Operator Description](Documentation/Operator-Description.md)
+* [Miscellaneous](Documentation/Miscellaneous.md)
 
 ## Hacking
 
-* [Commit Guidelines](Hacking.md#Commit-Guidelines)
-* [Code Conventions](Hacking.md#Code-Conventions)
+* [Commit Guidelines](Hacking.md#commit-guidelines)
+* [Code Conventions](Hacking.md#code-conventions)
