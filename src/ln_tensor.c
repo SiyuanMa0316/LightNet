@@ -121,9 +121,43 @@ ln_tensor_list_entry *ln_tensor_list_find_by_name(ln_list *list,
     return ln_list_find_custom(list, &cmp_entry, cmp_by_name);
 }
 
+ln_tensor_entry *ln_tensor_list_find_entry(ln_list *list, ln_hash *tensor_table,
+                                           const char *arg_name)
+{
+    char *tname;
+
+    tname = ln_tensor_list_find_name(list, arg_name);
+    if (!tname)
+        return NULL;
+
+    return ln_tensor_table_find(tensor_table, tname);
+}
+
 int ln_tensor_list_length(ln_list *list)
 {
     return ln_list_length(list);
+}
+
+int ln_tensor_list_unique_arg_name(ln_list *list, char *buf, const char *prefix)
+{
+    ln_tensor_list_entry *tle;
+    int max_idx = -1;
+    int idx;
+    size_t prefix_len = strlen(prefix);
+
+    LN_LIST_FOREACH(tle, list) {
+        if (!ln_is_prefix_plus_number(tle->arg_name, prefix))
+            continue;
+        idx = atoi(&tle->arg_name[prefix_len]);
+        max_idx = max_idx < idx ? idx : max_idx;
+    }
+    max_idx++;
+    if (ln_digit_num(max_idx) + prefix_len >= LN_MAX_NAME_LEN)
+        ln_msg_inter_error("result '%s%d' length exceeds LN_MAX_NAME_LEN = %d",
+                           prefix, max_idx, LN_MAX_NAME_LEN);
+    snprintf(buf, LN_MAX_NAME_LEN, "%s%d", prefix, max_idx);
+
+    return max_idx;
 }
 
 ln_tensor_entry *ln_tensor_entry_create(const char *name, tl_tensor *tensor)

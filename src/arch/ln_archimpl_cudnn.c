@@ -20,34 +20,41 @@
  * SOFTWARE.
  */
 
-#ifndef _LN_LIGHTNET_H_
-#define _LN_LIGHTNET_H_
-
-/* end of config defines */
-
-#include "ln_util.h"
-#include "ln_list.h"
-#include "ln_queue.h"
-#include "ln_msg.h"
-#include "ln_graph.h"
-#include "ln_hash.h"
-#include "ln_mem.h"
-#include "ln_param.h"
-#include "ln_tensor.h"
-#include "ln_op.h"
-#include "ln_cuda.h"
-#include "ln_cudnn.h"
-#include "ln_tensorrt.h"
-#include "ln_json.h"
-#include "ln_pass.h"
 #include "ln_arch.h"
-#include "ln_dfg.h"
-#include "ln_context.h"
-#include "ln_name.h"
-#include "ln_option.h"
+#include "ln_cudnn.h"
 
-#define LN_MAJOR_VERSION (0)
-#define LN_MINOR_VERSION (1)
-#define LN_MICRO_VERSION (0)
+extern ln_op ln_opimpl_relu_cudnn;
+/* end of declare cudnn ops */
 
-#endif  /* _LN_LIGHTNET_H_ */
+static ln_op *ops_cudnn[] = {
+    &ln_opimpl_relu_cudnn,
+/* end of init cudnn ops */
+    NULL
+};
+
+void init_cudnn(void **context_p)
+{
+    *context_p = ln_cudnn_context_create();
+}
+
+void cleanup_cudnn(void **context_p)
+{
+    ln_cudnn_context_free(*context_p);
+}
+
+ln_expander_func ep_funcs_cudnn[] = {
+    NULL
+};
+
+ln_combiner_func cb_funcs_cudnn[] = {
+    NULL
+};
+
+ln_arch ln_archimpl_cudnn = {
+    .init_func = init_cudnn,
+    .cleanup_func = cleanup_cudnn,
+    .reg_ops = ops_cudnn,
+    .ep_funcs = ep_funcs_cudnn,
+    .cb_funcs = cb_funcs_cudnn,
+    .arch_name = "cudnn",
+};

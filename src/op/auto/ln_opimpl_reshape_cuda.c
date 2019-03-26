@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,7 +83,13 @@ static void reshape_cuda_pre_run(ln_op_arg *op_arg)
     dims = dims_entry->value_array_int;
     ln_opck_param_array_int_ge(dims_entry, 1);
     dims = dims;
-    ln_opck_satisfy_msg(src->len == ln_compute_length(dims_entry->array_len, dims), "`src` tensor length should be equal to the reshaped length");
+    {
+        {
+            char shape1[LN_MAXLINE];
+            char shape2[LN_MAXLINE];
+            ln_opck_satisfy_msg(src->len == ln_compute_length(dims_entry->array_len, dims), "`src` (%s) tensor's length %d should be equal to the reshaped (%s) length %d", ln_sprint_shape(shape1, src->ndim, src->dims), src->len, ln_sprint_shape(shape2, dims_entry->array_len, dims), ln_compute_length(dims_entry->array_len, dims));
+        }
+    }
 
     /* define output tensor shape, tensor data should be NULL */
     dst_ndim = dims_entry->array_len;
@@ -141,6 +147,10 @@ static const char *param_arg_names[] = {
     NULL
 };
 
+static const ln_param_type param_ptypes[] = {
+    LN_PARAM_ARRAY_NUMBER,
+};
+
 /* specify other ln_op_arg fields */
 static ln_op_arg op_arg_reshape_cuda = {
     .optype = "reshape_cuda",
@@ -148,6 +158,7 @@ static ln_op_arg op_arg_reshape_cuda = {
     .in_arg_names = in_arg_names,
     .out_arg_names = out_arg_names,
     .param_arg_names = param_arg_names,
+    .param_ptypes = param_ptypes,
 };
 
 /* struct used for op registration in ln_oplist.c */

@@ -52,6 +52,35 @@ const char *ln_tensorrt_version_str(void)
     return TENSORRT_VERSION_STR;
 }
 
+int ln_tensorrt_version_cmp(const char *ver_compare_to)
+{
+    return strverscmp(ln_tensorrt_version_str(), ver_compare_to);
+}
+
+const char *ln_tensorrt_elew_name(const char *elew_name_tl)
+{
+    const char *elew_type = NULL;
+
+    if (ln_streq(elew_name_tl, "TL_MUL"))
+        elew_type = "kPROD";
+    else if (ln_streq(elew_name_tl, "TL_DIV"))
+        elew_type = "kDIV";
+    else if (ln_streq(elew_name_tl, "TL_SUM"))
+        elew_type = "kSUM";
+    else if (ln_streq(elew_name_tl, "TL_SUB"))
+        elew_type = "kSUB";
+    else if (ln_streq(elew_name_tl, "TL_MAX"))
+        elew_type = "kMAX";
+    else if (ln_streq(elew_name_tl, "TL_MIN"))
+        elew_type = "kMIN";
+    else if (ln_streq(elew_name_tl, "TL_POW"))
+        elew_type = "kPOW";
+    else
+        ln_msg_error("unsupported elew op type %s in ln_tensorrt_elew_name()",
+                     elew_name_tl);
+    return elew_type;
+}
+
 static int tl_dtype_to_ioTensor_DataType(tl_dtype dtype)
 {
     // TODO: add fp16 support
@@ -263,8 +292,8 @@ void ln_tensorrt_check_op(ln_op_arg *op_arg)
             te = ln_tensor_table_find(op_arg->tensor_table, tle->name);
             ln_opck_tensor_defined(te, tle->name);
             ln_opck_tensor_mtype_eq(te, LN_MEM_CUDA);
-            ln_opck_satisfy_msg(te->tensor->ndim == 4,
-                                "\"src*\" should be a 4-dimensional tensor");
+            // ln_opck_satisfy_msg(te->tensor->ndim == 4,
+            //                     "'src*' should be a 4-dimensional tensor");
             ln_opck(LN_MSG_ERROR, tl_dtype_to_ioTensor_DataType(te->tensor->dtype) != -1,
                     "%s: \"%s\"'s tensor %s have unsupported input tensor dtype %s for building TensorRT %s model",
                     op_arg->optype, op_arg->name, te->name,

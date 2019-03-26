@@ -1,13 +1,15 @@
 *#
 #*
-
+.#*
 *~
 *.bak
+
 *.o
 *.so
 *.out
 *.el
 *.i
+*.pyc
 *out.json
 test.json
 .clang_complete

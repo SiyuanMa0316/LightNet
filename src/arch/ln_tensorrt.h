@@ -20,41 +20,30 @@
  * SOFTWARE.
  */
 
-#include "ln_arch.h"
-#include "ln_cudnn.h"
+#ifndef _LN_TENSORRT_H_
+#define _LN_TENSORRT_H_
+#ifdef LN_TENSORRT
 
-extern ln_op ln_opimpl_relu_cudnn;
-/* end of declare cudnn ops */
+#include "ln_util.h"
 
-static ln_op *ops_cudnn[] = {
-    &ln_opimpl_relu_cudnn,
-/* end of init cudnn ops */
-    NULL
-};
+struct ln_tensorrt_bundle;
+typedef struct ln_tensorrt_bundle ln_tensorrt_bundle;
 
-void init_cudnn(void **context_p)
-{
-    *context_p = ln_cudnn_context_create();
-}
+#ifdef __cplusplus
+LN_CPPSTART
+#endif
 
-void cleanup_cudnn(void **context_p)
-{
-    ln_cudnn_context_free(*context_p);
-}
+const char *ln_tensorrt_version_str(void);
+int ln_tensorrt_version_cmp(const char *ver_compare_to);
+const char *ln_tensorrt_elew_name(const char *elew_name_tl);
+void ln_tensorrt_check_op(ln_op_arg *op_arg);
+ln_tensorrt_bundle *ln_tensorrt_bundle_create(ln_op_arg *op_arg);
+void ln_tensorrt_bundle_free(ln_tensorrt_bundle *bundle);
+void ln_tensorrt_bundle_execute(ln_tensorrt_bundle *bundle);
 
-ln_expander_func ep_funcs_cudnn[] = {
-    NULL
-};
+#ifdef __cplusplus
+LN_CPPEND
+#endif
 
-ln_combiner_func cb_funcs_cudnn[] = {
-    NULL
-};
-
-ln_arch ln_arch_cudnn = {
-    .init_func = init_cudnn,
-    .cleanup_func = cleanup_cudnn,
-    .reg_ops = ops_cudnn,
-    .ep_funcs = ep_funcs_cudnn,
-    .cb_funcs = cb_funcs_cudnn,
-    .arch_name = "cudnn",
-};
+#endif  /* LN_TENSORRT */
+#endif  /* _LN_TENSORRT_H_ */

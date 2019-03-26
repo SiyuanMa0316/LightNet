@@ -208,6 +208,7 @@ void ln_context_compile(ln_context *ctx, const char *target)
     ln_op_list_do_post_run(ctx->ops);
     assert(ln_hash_size(ctx->tensor_table) == 0);
     ln_op_list_do_pre_run(ctx->ops);
+    /* ln_context_print(ctx, "out.json"); */
 
     ln_pass_mem_plan(ctx);
 }
@@ -230,11 +231,7 @@ void ln_context_load(ln_context *ctx, const char *datafile)
 
 void ln_context_run(const ln_context *ctx)
 {
-    double t1, t2;
-    t1 = ln_clock();
     ln_op_list_do_run(ctx->ops);
-    t2 = ln_clock();
-    ln_msg_info("run time: %.5fs", t2 - t1);
 }
 
 void ln_context_unload(ln_context *ctx)

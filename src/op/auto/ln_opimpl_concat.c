@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,13 +94,21 @@ static void concat_pre_run(ln_op_arg *op_arg)
     ln_opck_param_type(axis_entry, LN_PARAM_NUMBER);
     axis = axis_entry->value_int;
     axis = axis;
-    ln_opck_satisfy_msg(axis >= 0 && axis < src1->ndim, "`axis` should match the dimensions of `src1` and `src2`");
+    {
+        {
+            char shape1[LN_MAXLINE];
+            char shape2[LN_MAXLINE];
+            ln_opck_satisfy_msg(axis >= 0 && axis < src1->ndim, "`axis` %d should match the dimensions of `src1` (%s )and `src2` (%d)", axis, ln_sprint_shape(shape1, src1->ndim, src1->dims), ln_sprint_shape(shape2, src2->ndim, src2->dims));
+        }
+    }
 
     {
         for (int i = 0; i < src1->ndim; i++) {
             if (i == axis)
                 continue;
-            ln_opck_satisfy_msg(src1->dims[i] == src2->dims[i], "`src1` and `src2` should have the same shape, except in the dimension corresponding to `axis`");
+            char shape1[LN_MAXLINE];
+            char shape2[LN_MAXLINE];
+            ln_opck_satisfy_msg(src1->dims[i] == src2->dims[i], "`src1` (%s) and `src2` (%s) should have the same shape, except in the dimension corresponding to `axis` %d", ln_sprint_shape(shape1, src1->ndim, src1->dims), ln_sprint_shape(shape2, src2->ndim, src2->dims), axis);
         }
     }
 
@@ -155,6 +163,10 @@ static const char *param_arg_names[] = {
     NULL
 };
 
+static const ln_param_type param_ptypes[] = {
+    LN_PARAM_NUMBER,
+};
+
 /* specify other ln_op_arg fields */
 static ln_op_arg op_arg_concat = {
     .optype = "concat",
@@ -162,6 +174,7 @@ static ln_op_arg op_arg_concat = {
     .in_arg_names = in_arg_names,
     .out_arg_names = out_arg_names,
     .param_arg_names = param_arg_names,
+    .param_ptypes = param_ptypes,
 };
 
 /* struct used for op registration in ln_oplist.c */

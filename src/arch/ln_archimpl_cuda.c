@@ -48,6 +48,8 @@ extern ln_op ln_opimpl_pick1d_cuda;
 extern ln_op ln_opimpl_fprint_cuda;
 extern ln_op ln_opimpl_lrelu_cuda;
 extern ln_op ln_opimpl_detect_yolov3_cuda;
+extern ln_op ln_opimpl_avgpool2d_cuda;
+extern ln_op ln_opimpl_resize_cuda;
 /* end of declare cuda ops */
 
 static ln_op *ops_cuda[] = {
@@ -77,6 +79,8 @@ static ln_op *ops_cuda[] = {
     &ln_opimpl_fprint_cuda,
     &ln_opimpl_lrelu_cuda,
     &ln_opimpl_detect_yolov3_cuda,
+    &ln_opimpl_avgpool2d_cuda,
+    &ln_opimpl_resize_cuda,
 /* end of init cuda ops */
     NULL
 };
@@ -117,6 +121,7 @@ static inline int can_replace(const char *optype)
     /* return 0; */
 }
 
+/* this is just for testing, should remove it */
 static ln_list *cb_func_single_replace(const ln_list *ops, size_t size,
                                        const ln_dfg *dfg, int *match)
 {
@@ -173,18 +178,44 @@ static ln_list *cb_func_single_replace(const ln_list *ops, size_t size,
     return new_ops;
 }
 
+extern ln_list *ln_expander_cuda_expander(const ln_op *op, const ln_dfg *dfg, int *match);
+/* end of declare cuda expanders */
+
 ln_expander_func ep_funcs_cuda[] = {
+    ln_expander_cuda_expander,
+/* end of cuda expanders */
     NULL
 };
+
+/* end of declare cuda combiners */
 
 ln_combiner_func cb_funcs_cuda[] = {
     cb_func_single_replace,
+/* end of cuda combiners */
     NULL
 };
 
-ln_arch ln_arch_cuda = {
-    .init_func = NULL,
-    .cleanup_func = NULL,
+extern void ln_expander_init_cuda_expander(void **context_p);
+/* end of declare cuda init funcs */
+
+static void init_cuda(void **context_p)
+{
+    ln_expander_init_cuda_expander(context_p);
+/* end of exec cuda init funcs */
+}
+
+extern void ln_expander_cleanup_cuda_expander(void **context_p);
+/* end of declare cuda cleanup funcs */
+
+static void cleanup_cuda(void **context_p)
+{
+    ln_expander_cleanup_cuda_expander(context_p);
+/* end of exec cuda cleanup funcs */
+}
+
+ln_arch ln_archimpl_cuda = {
+    .init_func = init_cuda,
+    .cleanup_func = cleanup_cuda,
     .reg_ops = ops_cuda,
     .ep_funcs = ep_funcs_cuda,
     .cb_funcs = cb_funcs_cuda,

@@ -27,6 +27,8 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <time.h>
+#include <ctype.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "ln_util.h"
@@ -59,6 +61,7 @@ char *ln_strdup(const char *s)
 {
     char *new_s;
 
+    assert(s);
     new_s = strdup(s);
     if (new_s == NULL) {
         err(EXIT_FAILURE, "ln_strdup(): strdup(%s) failed", s);
@@ -184,9 +187,82 @@ int ln_streqn(const char *s1, const char *s2, size_t n)
     return !!!strncmp(s1, s2, n);
 }
 
+int ln_is_prefix_plus_number(const char *str, const char *prefix)
+{
+    if (!str || !prefix)
+        return 0;
+
+    const char *s = str;
+    const char *p = prefix;
+    while (*s++ == *p++);
+    if (*--s && !*--p) {
+        while (isdigit(*s++));
+        if (!*--s)
+            return 1;
+    }
+    return 0;
+}
+
+int ln_digit_num(ssize_t num)
+{
+    int n = 0;
+
+    if (num == 0)
+        return 1;
+
+    while (num) {
+        num /= 10;
+        n++;
+    }
+    return n;
+}
+
 int ln_compute_output_dim(int input_dim, int size, int stride, int padding)
 {
     return ((input_dim + padding) - size) / stride + 1;
+}
+
+int *ln_autopading(int *padding, const int *input_shape, const int *size,
+                   const int *stride, int ndim, const char *mode)
+{
+    if (ln_streq(mode, "VALID")) {
+        for (int i = 0; i < ndim; i++)
+            padding[i] = 0;
+        return padding;
+    }
+
+    int output_shape[TL_MAXDIM];
+    int pad_shape[TL_MAXDIM];
+    for (int i = 0; i < ndim; i++) {
+        output_shape[i] = (int)ceil((double)input_shape[i] / (double)stride[i]);
+        pad_shape[i] = (output_shape[i] - 1) * stride[i] + size[i]
+            - input_shape[i];
+    }
+    if (ln_streq(mode, "SAME_UPPER")) {
+        for (int i = 0; i < ndim; i++) {
+            if (pad_shape[i] % 2) {
+                padding[i] = 0;
+                padding[i+ndim] = pad_shape[i];
+            } else {
+                padding[i] = pad_shape[i] / 2;
+                padding[i+ndim] = pad_shape[i] / 2;
+            }
+        }
+    } else if (ln_streq(mode, "SAME_LOWER")) {
+        for (int i = 0; i < ndim; i++) {
+            if (pad_shape[i] % 2) {
+                padding[i] = pad_shape[i];
+                padding[i+ndim] = 0;
+            } else {
+                padding[i] = pad_shape[i] / 2;
+                padding[i+ndim] = pad_shape[i] / 2;
+            }
+        }
+    } else {
+        assert(0 && "unsupported padding mode");
+    }
+
+    return padding;
 }
 
 int ln_compute_length(int ndim, const int *dims)
@@ -196,6 +272,30 @@ int ln_compute_length(int ndim, const int *dims)
     for (i = 0, len = 1; i < ndim; i++)
         len *= dims[i];
     return len;
+}
+
+void ln_print_shape(int ndim, int *dims)
+{
+    printf("[");
+    for (int i = 0; i < ndim; i++) {
+        printf("%d", dims[i]);
+        if (i != ndim - 1)
+            printf(", ");
+    }
+    printf("]");
+}
+
+char *ln_sprint_shape(char *buf, int ndim, int *dims)
+{
+    int n = 0;
+    n += snprintf(buf, 2, "[");
+    for (int i = 0; i < ndim; i++) {
+        n += snprintf(buf+n, ln_digit_num(dims[i])+1, "%d", dims[i]);
+        if (i != ndim - 1)
+            n += snprintf(buf+n, 3, ", ");
+    }
+    snprintf(buf+n, 2, "]");
+    return buf;
 }
 
 uint32_t ln_direct_hash(const void *key)

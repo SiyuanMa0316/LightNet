@@ -24,14 +24,17 @@
 #include <assert.h>
 #include <limits.h>
 #include <float.h>
+
 #include "ln_param.h"
 #include "ln_util.h"
+#include "ln_name.h"
+#include "ln_msg.h"
 
 ln_param_entry *ln_param_entry_create(const char *arg_name, ln_param_type type)
 {
     ln_param_entry *entry;
 
-    assert(type >= LN_PARAM_NULL && type < LN_PARAM_INVALID);
+    assert(type >= LN_PARAM_NULL && type <= LN_PARAM_INVALID);
     entry = ln_alloc(sizeof(ln_param_entry));
     entry->arg_name = ln_strdup(arg_name);
     entry->type = type;
@@ -65,6 +68,177 @@ void ln_param_entry_free(ln_param_entry *entry)
     ln_free(entry->value_array_int);
     ln_free(entry->value_array_bool);
     ln_free(entry);
+}
+
+void ln_param_assign_bool(ln_param_entry *entry, ln_bool bool)
+{
+    assert(entry);
+    entry->value_bool = bool;
+}
+
+void ln_param_assign_satu_number(ln_param_entry *entry, double number)
+{
+    assert(entry);
+
+    entry->value_double = number;
+
+    /* use saturation in case of overflow */
+    if (number >= FLT_MAX)
+        entry->value_float = FLT_MAX;
+    else if (number <= FLT_MIN)
+        entry->value_float = FLT_MIN;
+    else
+        entry->value_float = (float)number;
+
+    if (number >= INT_MAX)
+        entry->value_int = INT_MAX;
+    else if (number <= INT_MIN)
+        entry->value_int = INT_MIN;
+    else
+        entry->value_int = (int)number;
+}
+
+void ln_param_assign_string(ln_param_entry *entry, const char *string)
+{
+    assert(entry);
+    ln_free(entry->value_string);
+    entry->value_string = ln_strdup(string);
+}
+
+void ln_param_assign_satu_array_number(ln_param_entry *entry, int array_len,
+                                       const double *array_number)
+{
+    int i;
+    assert(entry);
+    assert(array_len > 0);
+
+    ln_free(entry->value_array_double);
+    ln_free(entry->value_array_float);
+    ln_free(entry->value_array_int);
+    entry->array_len = array_len;
+    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
+    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
+    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
+
+    memmove(entry->value_array_double, array_number, sizeof(double)*array_len);
+
+    /* use saturation in case of overflow */
+    for (i = 0; i < array_len; i++) {
+        if (array_number[i] >= FLT_MAX)
+            entry->value_array_float[i] = FLT_MAX;
+        else if (array_number[i] <= FLT_MIN)
+            entry->value_array_float[i] = FLT_MIN;
+        else
+            entry->value_array_float[i] = (float)array_number[i];
+    }
+
+    for (i = 0; i < array_len; i++) {
+        if (array_number[i] >= INT_MAX)
+            entry->value_array_int[i] = INT_MAX;
+        else if (array_number[i] <= INT_MIN)
+            entry->value_array_int[i] = INT_MIN;
+        else
+            entry->value_array_int[i] = (int)array_number[i];
+    }
+}
+
+void ln_param_assign_satu_array_double(ln_param_entry *entry, int array_len,
+                                       const double *array_number)
+{
+    ln_param_assign_satu_array_number(entry, array_len, array_number);
+}
+
+void ln_param_assign_satu_array_float(ln_param_entry *entry, int array_len,
+                                      const float *array_number)
+{
+    int i;
+    assert(entry);
+    assert(array_len > 0);
+
+    ln_free(entry->value_array_double);
+    ln_free(entry->value_array_float);
+    ln_free(entry->value_array_int);
+    entry->array_len = array_len;
+    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
+    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
+    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
+
+    memmove(entry->value_array_float, array_number, sizeof(float)*array_len);
+
+    for (i = 0; i < array_len; i++)
+        entry->value_array_double[i] = (double)array_number[i];
+
+    /* use saturation in case of overflow */
+    for (i = 0; i < array_len; i++) {
+        if (array_number[i] >= INT_MAX)
+            entry->value_array_int[i] = INT_MAX;
+        else if (array_number[i] <= INT_MIN)
+            entry->value_array_int[i] = INT_MIN;
+        else
+            entry->value_array_int[i] = (int)array_number[i];
+    }
+}
+
+void ln_param_assign_satu_array_int(ln_param_entry *entry, int array_len,
+                                    const int *array_number)
+{
+    int i;
+    assert(entry);
+    assert(array_len > 0);
+
+    ln_free(entry->value_array_double);
+    ln_free(entry->value_array_float);
+    ln_free(entry->value_array_int);
+    entry->array_len = array_len;
+    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
+    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
+    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
+
+    memmove(entry->value_array_int, array_number, sizeof(int)*array_len);
+
+    for (i = 0; i < array_len; i++) {
+        entry->value_array_double[i] = (double)array_number[i];
+        entry->value_array_float[i] = (float)array_number[i];
+    }
+}
+
+void ln_param_assign_array_string(ln_param_entry *entry, int array_len,
+                                  const char **array_string)
+{
+    int i;
+    assert(entry);
+    assert(array_len > 0);
+
+    for (i = 0; i < entry->array_len; i++)
+        ln_free(entry->value_array_string[i]);
+    ln_free(entry->value_array_string);
+    entry->array_len = array_len;
+    entry->value_array_string = ln_alloc(sizeof(char *)*array_len);
+    for (i = 0; i < array_len; i++) {
+        entry->value_array_string[i] = ln_strdup(array_string[i]);
+    }
+}
+
+void ln_param_assign_array_bool(ln_param_entry *entry, int array_len,
+                                const ln_bool *array_bool)
+{
+    assert(entry);
+    assert(array_len > 0);
+
+    ln_free(entry->value_array_bool);
+    entry->array_len = array_len;
+    entry->value_array_bool = ln_alloc(sizeof(ln_bool)*array_len);
+    memmove(entry->value_array_bool, array_bool, sizeof(ln_bool)*array_len);
+}
+
+ln_list *ln_param_list_append_empty(ln_list *list, const char *arg_name,
+                                    ln_param_type ptype)
+{
+     ln_param_entry *entry;
+
+     entry = ln_param_entry_create(arg_name, ptype);
+     list = ln_list_append(list, entry);
+     return list;
 }
 
 ln_list *ln_param_list_append_string(ln_list *list, const char *arg_name,
@@ -147,12 +321,12 @@ ln_list *ln_param_list_append_int(ln_list *list, const char *arg_name,
 }
 
 ln_list *ln_param_list_append_bool(ln_list *list, const char *arg_name,
-                                   ln_bool bool)
+                                   ln_bool bool_value)
 {
     ln_param_entry *entry;
 
     entry = ln_param_entry_create(arg_name, LN_PARAM_BOOL);
-    entry->value_bool = bool;
+    entry->value_bool = bool_value;
     list = ln_list_append(list, entry);
     return list;
 }
@@ -167,132 +341,69 @@ ln_list *ln_param_list_append_null(ln_list *list, const char *arg_name)
 }
 
 ln_list *ln_param_list_append_array_string(ln_list *list, const char *arg_name,
-                                           int array_len, char **array_string)
+                                           int array_len,
+                                           const char **array_string)
 {
     ln_param_entry *entry;
-    int i;
 
-    assert(array_len >= 0);
     entry = ln_param_entry_create(arg_name, LN_PARAM_ARRAY_STRING);
-    entry->array_len = array_len;
-    entry->value_array_string = ln_alloc(sizeof(char *)*array_len);
-    for (i = 0; i < array_len; i++) {
-        entry->value_array_string[i] = ln_strdup(array_string[i]);
-    }
+    ln_param_assign_array_string(entry, array_len, array_string);
     list = ln_list_append(list, entry);
     return list;
 }
 
 ln_list *ln_param_list_append_array_number(ln_list *list, const char *arg_name,
-                                           int array_len, double *array_number)
+                                           int array_len,
+                                           const double *array_number)
 {
     ln_param_entry *entry;
-    int i;
 
-    assert(array_len >= 0);
     entry = ln_param_entry_create(arg_name, LN_PARAM_ARRAY_NUMBER);
-    entry->array_len = array_len;
-    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
-    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
-    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
-
-    memmove(entry->value_array_double, array_number, sizeof(double)*array_len);
-
-    /* use saturation in case of overflow */
-    for (i = 0; i < array_len; i++) {
-        if (array_number[i] >= FLT_MAX)
-            entry->value_array_float[i] = FLT_MAX;
-        else if (array_number[i] <= FLT_MIN)
-            entry->value_array_float[i] = FLT_MIN;
-        else
-            entry->value_array_float[i] = (float)array_number[i];
-    }
-
-    for (i = 0; i < array_len; i++) {
-        if (array_number[i] >= INT_MAX)
-            entry->value_array_int[i] = INT_MAX;
-        else if (array_number[i] <= INT_MIN)
-            entry->value_array_int[i] = INT_MIN;
-        else
-            entry->value_array_int[i] = (int)array_number[i];
-    }
-
+    ln_param_assign_satu_array_number(entry, array_len, array_number);
     list = ln_list_append(list, entry);
     return list;
 }
 
 ln_list *ln_param_list_append_array_double(ln_list *list, const char *arg_name,
-                                           int array_len, double *array_number)
+                                           int array_len,
+                                           const double *array_number)
 {
-    return ln_param_list_append_array_number(list, arg_name, array_len, array_number);
+    return ln_param_list_append_array_number(list, arg_name, array_len,
+                                             array_number);
 }
 
 ln_list *ln_param_list_append_array_float(ln_list *list, const char *arg_name,
-                                          int array_len, float *array_number)
+                                          int array_len,
+                                          const float *array_number)
 {
     ln_param_entry *entry;
-    int i;
 
-    assert(array_len >= 0);
     entry = ln_param_entry_create(arg_name, LN_PARAM_ARRAY_NUMBER);
-    entry->array_len = array_len;
-    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
-    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
-    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
-
-    memmove(entry->value_array_float, array_number, sizeof(float)*array_len);
-
-    for (i = 0; i < array_len; i++)
-        entry->value_array_double[i] = (double)array_number[i];
-
-    /* use saturation in case of overflow */
-    for (i = 0; i < array_len; i++) {
-        if (array_number[i] >= INT_MAX)
-            entry->value_array_int[i] = INT_MAX;
-        else if (array_number[i] <= INT_MIN)
-            entry->value_array_int[i] = INT_MIN;
-        else
-            entry->value_array_int[i] = (int)array_number[i];
-    }
-
+    ln_param_assign_satu_array_float(entry, array_len, array_number);
     list = ln_list_append(list, entry);
     return list;
 }
 
 ln_list *ln_param_list_append_array_int(ln_list *list, const char *arg_name,
-                                        int array_len, int *array_int)
+                                        int array_len, const int *array_number)
 {
     ln_param_entry *entry;
-    int i;
 
-    assert(array_len >= 0);
     entry = ln_param_entry_create(arg_name, LN_PARAM_ARRAY_NUMBER);
-    entry->array_len = array_len;
-    entry->value_array_double = ln_alloc(sizeof(double)*array_len);
-    entry->value_array_float = ln_alloc(sizeof(float)*array_len);
-    entry->value_array_int = ln_alloc(sizeof(int)*array_len);
-
-    memmove(entry->value_array_int, array_int, sizeof(int)*array_len);
-
-    for (i = 0; i < array_len; i++) {
-        entry->value_array_double[i] = (double)array_int[i];
-        entry->value_array_float[i] = (float)array_int[i];
-    }
-
+    ln_param_assign_satu_array_int(entry, array_len, array_number);
     list = ln_list_append(list, entry);
     return list;
 }
 
 ln_list *ln_param_list_append_array_bool(ln_list *list, const char *arg_name,
-                                         int array_len, ln_bool *array_bool)
+                                         int array_len,
+                                         const ln_bool *array_bool)
 {
     ln_param_entry *entry;
 
     assert(array_len >= 0);
     entry = ln_param_entry_create(arg_name, LN_PARAM_ARRAY_BOOL);
-    entry->array_len = array_len;
-    entry->value_array_bool = ln_alloc(sizeof(ln_bool)*array_len);
-    memmove(entry->value_array_bool, array_bool, sizeof(ln_bool)*array_len);
+    ln_param_assign_array_bool(entry, array_len, array_bool);
     list = ln_list_append(list, entry);
     return list;
 }
@@ -301,7 +412,6 @@ ln_list *ln_param_list_copy(ln_list *list)
 {
     ln_list *new_list = NULL;
     ln_param_entry *entry;
-
     LN_LIST_FOREACH(entry, list) {
         switch (entry->type) {
         case LN_PARAM_ARRAY_BOOL:
@@ -319,7 +429,7 @@ ln_list *ln_param_list_copy(ln_list *list)
             new_list = ln_param_list_append_array_string(new_list,
                                                          entry->arg_name,
                                                          entry->array_len,
-                                                         entry->value_array_string);
+                                                         (const char **)entry->value_array_string);
             break;
         case LN_PARAM_BOOL:
             new_list = ln_param_list_append_bool(new_list, entry->arg_name,
@@ -392,23 +502,49 @@ int ln_param_list_length(ln_list *list)
     return ln_list_length(list);
 }
 
+int ln_param_list_unique_arg_name(ln_list *list, char *buf, const char *prefix)
+{
+    ln_param_entry *pe;
+    int max_idx = -1;
+    int idx;
+    size_t prefix_len = strlen(prefix);
+
+    if (prefix_len >= LN_MAX_NAME_LEN)
+        ln_msg_inter_error("prefix '%s' length exceeds LN_MAX_NAME_LEN", prefix);
+    LN_LIST_FOREACH(pe, list) {
+        if (!ln_is_prefix_plus_number(pe->arg_name, prefix))
+            continue;
+        idx = atoi(&pe->arg_name[prefix_len]);
+        max_idx = max_idx < idx ? idx : max_idx;
+    }
+    max_idx++;
+    if (ln_digit_num(max_idx) + prefix_len >= LN_MAX_NAME_LEN)
+        ln_msg_inter_error("result '%s%d' length exceeds LN_MAX_NAME_LEN",
+                           prefix, max_idx);
+    snprintf(buf, LN_MAX_NAME_LEN, "%s%d", prefix, max_idx);
+
+    return max_idx;
+}
+
 const char *ln_param_type_name(ln_param_type type)
 {
     switch (type) {
     case LN_PARAM_NULL:
-        return "null";
+        return "LN_PARAM_NULL";
     case LN_PARAM_STRING:
-        return "String";
+        return "LN_PARAM_STRING";
     case LN_PARAM_NUMBER:
-        return "Number";
+        return "LN_PARAM_NUMBER";
     case LN_PARAM_BOOL:
-        return "Boolean";
+        return "LN_PARAM_BOOL";
     case LN_PARAM_ARRAY_STRING:
-        return "String Array";
+        return "LN_PARAM_ARRAY_STRING";
     case LN_PARAM_ARRAY_NUMBER:
-        return "Number Array";
+        return "LN_PARAM_ARRAY_NUMBER";
     case LN_PARAM_ARRAY_BOOL:
-        return "Boolean Array";
+        return "LN_PARAM_ARRAY_BOOL";
+    case LN_PARAM_INVALID:
+        return "LN_PARAM_INVALID";
     default:
         assert(0 && "unsupported ln_param_type");
     }

@@ -29,6 +29,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "tl_tensor.h"
+
 enum ln_bool {
     LN_FALSE = 0,
     LN_TRUE = 1
@@ -64,8 +66,14 @@ char *ln_strcat_alloc(const char *s1, const char *s2);
 char *ln_strcat_delim_alloc(const char *s1, const char *s2, char delim);
 int ln_streq(const char *s1, const char *s2);
 int ln_streqn(const char *s1, const char *s2, size_t n);
+int ln_is_prefix_plus_number(const char *str, const char *prefix);
+int ln_digit_num(ssize_t num);
 int ln_compute_output_dim(int input_dim, int size, int stride, int padding);
 int ln_compute_length(int ndim, const int *dims);
+int *ln_autopading(int *padding, const int *input_shape, const int *size,
+                   const int *stride, int ndim, const char *mode);
+void ln_print_shape(int ndim, int *dims);
+char *ln_sprint_shape(char *buf, int ndim, int *dims);
 uint32_t ln_direct_hash(const void *key);
 int ln_direct_cmp(const void *p1, const void *p2);
 uint32_t ln_str_hash(const void *key);

@@ -94,13 +94,12 @@ sub gen_op {
     }
 
     # TODO:FIXME: incorrect when a string contains ','
-    my @empty_array = ();
     my %op = (
               'optype' => $optype,
               'name' => $name,
-              'tensors_in' => $ins_str ? &gen_tensors($ins_str) : \@empty_array,
-              'tensors_out' => $outs_str ? &gen_tensors($outs_str) : \@empty_array,
-              'params' => $params_str ? &gen_params($params_str) : \@empty_array,
+              'tensors_in' => $ins_str ? &gen_tensors($ins_str) : [],
+              'tensors_out' => $outs_str ? &gen_tensors($outs_str) : [],
+              'params' => $params_str ? &gen_params($params_str) : [],
              );
     \%op;
 }
@@ -229,7 +228,20 @@ sub preprocess {
     unlink "${tmp_name}.i" or die "Cannot unlink file ${tmp_name}.i: $!";
     my @in_lines;
     foreach (split "\n", $in_text) {
-        push @in_lines, $_ unless /^#/ or /^\/\//;
+        next if /^#/ or /^\/\//;
+        # TODO: use a grammar to compute complex expression
+        my $line = $_;
+        while ($line =~ /\$\{eval\s+(.+?)\}/g) {
+            my $expr = $1;
+            if ($expr =~ /\$\{eval\s+/) {
+                pos($line) = pos($line)-length($expr)-1;
+                next;
+            }
+            my $res = eval $expr or die "eval '$expr' failed: $@";
+            substr($line, pos($line)-length($&), length($&)) = $res;
+            # pos($line) = 0;   # perl seems to set pos($line) = 0 automatically
+        }
+        push @in_lines, $line;
     }
     $in_text = join "\n", @in_lines;
 }

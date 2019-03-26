@@ -23,7 +23,6 @@
 #ifndef _LN_TENSOR_H_
 #define _LN_TENSOR_H_
 
-#include "tl_tensor.h"
 #include "ln_list.h"
 #include "ln_hash.h"
 #include "ln_mem.h"
@@ -66,7 +65,10 @@ ln_tensor_list_entry *ln_tensor_list_find_by_arg_name(ln_list *list,
                                                       const char *arg_name);
 ln_tensor_list_entry *ln_tensor_list_find_by_name(ln_list *list,
                                                   const char *name);
+ln_tensor_entry *ln_tensor_list_find_entry(ln_list *list, ln_hash *tensor_table,
+                                           const char *arg_name);
 int ln_tensor_list_length(ln_list *list);
+int ln_tensor_list_unique_arg_name(ln_list *list, char *buf, const char *prefix);
 
 ln_tensor_entry *ln_tensor_entry_create(const char *name, tl_tensor *tensor);
 void ln_tensor_entry_free(ln_tensor_entry *entry);
