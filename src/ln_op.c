@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -382,4 +382,29 @@ ln_op *ln_op_table_find(ln_hash *table, const char *name)
 void ln_op_table_free(ln_hash *table)
 {
     ln_hash_free(table);
+}
+
+void ln_op_table_vset_param(ln_hash *table, const char *opname,
+                           const char *pname, va_list ap)
+{
+    ln_op *op;
+    ln_param_entry *pe;
+
+    op = ln_op_table_find(table, opname);
+    if (!op)
+        ln_msg_error("op name '%s' not found", opname);
+    pe = ln_param_list_find(op->op_arg->params, pname);
+    if (!op)
+        ln_msg_error("param name '%s' of op '%s' not found", pname, opname);
+    ln_param_vset(pe, ap);
+}
+
+void ln_op_table_set_param(ln_hash *table, const char *opname,
+                           const char *pname, ...)
+{
+    va_list ap;
+
+    va_start(ap, pname);
+    ln_op_table_vset_param(table, opname, pname, ap);
+    va_end(ap);
 }

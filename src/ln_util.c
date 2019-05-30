@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,14 @@
 #include <sys/stat.h>
 
 #include "ln_util.h"
+#include "lightnet.h"
+
+char *ln_sprint_version(char *buf)
+{
+    snprintf(buf, 20, "%d.%d.%d",
+             LN_MAJOR_VERSION, LN_MINOR_VERSION, LN_MICRO_VERSION);
+    return buf;
+}
 
 void *ln_alloc(size_t size)
 {
@@ -334,6 +342,16 @@ double ln_clock(void)
     time = ts.tv_sec + ts.tv_nsec * 1e-9;
 
     return time;
+}
+
+void ln_img_submean(const unsigned char *data, const float *mean, float *out,
+                    int H, int W, int C)
+{
+    for (int c = 0; c < C; c++) {
+        for (int i = 0; i < H * W; i++) {
+            out[c * H * W + i] = (float)data[i * C + c] - mean[c];
+        }
+    }
 }
 
 static void err_doit(int errnoflag, int error, const char *fmt, va_list ap)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,9 +32,9 @@ typedef ln_list *(*ln_combiner_func) (const ln_list *ops, size_t size,
                                       const ln_dfg *dfg, int *match);
 
 struct ln_arch {
-    void              (*init_func)(void **context_p); /* pointer to context */
-    void              (*cleanup_func)(void **context_p);
-    void               *context;
+    void              (*init_func)(void **priv_p); /* pointer to priv */
+    void              (*cleanup_func)(void **priv_p);
+    void               *priv;
     ln_op             **reg_ops;       /* NULL terminated */
     ln_expander_func   *ep_funcs;      /* NULL terminated */
     ln_combiner_func   *cb_funcs;      /* NULL terminated */

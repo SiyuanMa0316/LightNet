@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -68,6 +68,7 @@ static void assert_op_eq(ln_op *op, char *optype, char *opname)
 /* TODO: test it throughly */
 START_TEST(test_ln_pass_combiner)
 {
+#ifdef LN_CUDA
      ln_op *op;
      ln_param_entry *param_entry;
      char *tensor_name;
@@ -196,26 +197,28 @@ START_TEST(test_ln_pass_combiner)
      ck_assert_ptr_ne(param_entry, NULL);
      ck_assert_int_eq(param_entry->type, LN_PARAM_ARRAY_NUMBER);
      ck_assert_array_int_eq(param_entry->value_array_int, ARR(int,2,4), 2);
+#endif
 }
 END_TEST
 
-static void mem_plans_free_wrapper(void *p)
+static void mem_pools_free_wrapper(void *p)
 {
-     ln_mem_plan_free(p);
+     ln_mem_pool_free(p);
 }
 
 START_TEST(test_ln_pass_mem)
 {
-     ln_hash *mem_plans;
-     ln_mem_plan *mem_plan_none;
+#ifdef LN_CUDA
+     ln_hash *mem_pools;
+     ln_mem_pool *mem_pool_none;
      ln_tensor_entry *te;
      ln_arch *arch;
 
      arch = ln_hash_find(LN_ARCH.arch_table, "cuda");
      ln_pass_combiner(ctx, 3, arch->cb_funcs);
-     mem_plans = ln_hash_create(ln_direct_hash, ln_direct_cmp, NULL, mem_plans_free_wrapper);
-     mem_plan_none = ln_mem_plan_create(4096, 1);
-     ln_hash_insert(mem_plans, (void *)LN_MEM_NONE, mem_plan_none);
+     mem_pools = ln_hash_create(ln_direct_hash, ln_direct_cmp, NULL, mem_pools_free_wrapper);
+     mem_pool_none = ln_mem_pool_create(4096, 1);
+     ln_hash_insert(mem_pools, (void *)LN_MEM_NONE, mem_pool_none);
 
      ln_pass_mem_plan(ctx);
 
@@ -241,7 +244,8 @@ START_TEST(test_ln_pass_mem)
      ck_assert_ptr_ne(te, NULL);
      ck_assert_int_eq(te->offset, 64);
 
-     ln_hash_free(mem_plans);
+     ln_hash_free(mem_pools);
+#endif
 }
 END_TEST
 /* end of tests */

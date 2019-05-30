@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -240,6 +240,43 @@ void ln_tensor_table_free(ln_hash *table)
     ln_hash_free(table);
 }
 
+void ln_tensor_table_set_data(ln_hash *table, const char *name, const void *data)
+{
+    ln_tensor_entry *te;
+    ln_copy_func copy;
+
+    te = ln_tensor_table_find(table, name);
+    if (!te)
+        ln_msg_error("tensor name '%s' not found", name);
+    copy = ln_mem_copy_func(te->mtype, LN_MEM_CPU);
+    ln_msg_debug("set data %s from %p to %p", te->name, data, te->tensor->data);
+    copy(te->tensor->data, data, tl_tensor_size(te->tensor));
+}
+
+void *ln_tensor_table_get_data(ln_hash *table, const char *name, void *data)
+{
+    ln_tensor_entry *te;
+    ln_copy_func copy;
+
+    te = ln_tensor_table_find(table, name);
+    if (!te)
+        ln_msg_error("tensor name '%s' not found", name);
+    copy = ln_mem_copy_func(LN_MEM_CPU, te->mtype);
+    ln_msg_debug("get data %s from %p to %p", te->name, te->tensor->data, data);
+    copy(data, te->tensor->data, tl_tensor_size(te->tensor));
+    return te->tensor->data;
+}
+
+size_t ln_tensor_table_data_size(ln_hash *table, const char *name)
+{
+    ln_tensor_entry *te;
+
+    te = ln_tensor_table_find(table, name);
+    if (!te)
+        ln_msg_error("tensor name '%s' not found", name);
+    return tl_tensor_size(te->tensor);
+}
+
 #define TRT_WEIGHT_ERR(file, fmt, varg...)                    \
     ln_msg_error("load_trt_weight_file(): invalid weight file %s: "fmt, \
                  (file), ##varg)
@@ -266,7 +303,7 @@ static void copy_weight_float(FILE *fp, ln_tensor_entry *te, const char *name,
 
     if (te->tensor->dtype != TL_FLOAT)
         TRT_WEIGHT_ERR(file, "data type of weight %s not match", name);
-    ln_msg_debug("loading data %s to 0x%p", name, te->tensor->data);
+    ln_msg_debug("loading data %s to %p", name, te->tensor->data);
     copy = ln_mem_copy_func(te->mtype, LN_MEM_CPU);
     for (i = 0; i < len; i++) {
         n = fscanf(fp, "%x", &val);
@@ -285,7 +322,7 @@ static void copy_weight_int8(FILE *fp, ln_tensor_entry *te, const char *name,
 
     if (te->tensor->dtype != TL_INT8)
         TRT_WEIGHT_ERR(file, "data type of weight %s not match", name);
-    ln_msg_debug("loading data %s to 0x%p", name, te->tensor->data);
+    ln_msg_debug("loading data %s to %p", name, te->tensor->data);
     copy = ln_mem_copy_func(te->mtype, LN_MEM_CPU);
     for (i = 0; i < len; i++) {
         n = fscanf(fp, "%hhx", &val);

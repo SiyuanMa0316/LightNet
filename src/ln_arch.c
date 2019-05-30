@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,7 +65,7 @@ void ln_arch_init(void)
 
     for (i = 0; archs[i]; i++) {
         if (archs[i]->init_func)
-            archs[i]->init_func(&archs[i]->context);
+            archs[i]->init_func(&archs[i]->priv);
         ret = ln_hash_insert(LN_ARCH.arch_table, archs[i]->arch_name, archs[i]);
         if (!ret)
             ln_msg_inter_error("duplicated arch name \"%s\"",
@@ -86,7 +86,7 @@ void ln_arch_cleanup(void)
 
     for (i = 0; archs[i]; i++) {
         if (archs[i]->cleanup_func)
-            archs[i]->cleanup_func(&archs[i]->context);
+            archs[i]->cleanup_func(&archs[i]->priv);
     }
 
     ln_hash_free(LN_ARCH.arch_table);

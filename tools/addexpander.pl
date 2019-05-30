@@ -118,7 +118,7 @@ sub gen_head_block {
     my $head_code = defined $head ? $head : " ";
     my $head_block_tpl = <<EOF;
 /*
- * Copyright (c) 2019 $author
+ * Copyright (c) 2018-2019 $author
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -194,7 +194,9 @@ EOF
             &err_exit("optype '$optype' needs a 'replace' or 'match' or 'err'");
         }
 
-        my $body_code = &indent_block($INDENT_OFFSET, (join "\n", @body_codes));
+        my $body_code = join "\n", @body_codes;
+        $body_code = &gen_custom($rule, $body_code);
+        $body_code = &indent_block($INDENT_OFFSET, $body_code);
         if ($rule == $rules->[0]) {
             push @rules_codes, <<EOF;
 if ($cond_code) {
@@ -214,7 +216,9 @@ EOF
 
     &make_defs_neat(\@auto_vars);
     my $auto_vars_code = join "\n", &indent_lines($INDENT_OFFSET, \@auto_vars);
-    my $rules_code = &indent_block($INDENT_OFFSET, (join "\n", @rules_codes));
+    my $rules_code = join "\n", @rules_codes;
+    $rules_code = &gen_custom($op, $rules_code);
+    $rules_code = &indent_block($INDENT_OFFSET, $rules_code);
 
     push @$ep_funcs, "{\"$optype\", ep_$optype},";
     my $tpl = <<EOF;
@@ -338,8 +342,15 @@ sub gen_replace {
     my $optype = $defined_ops->{self};
     my $desc = &find_op_desc($optype);
     my $code;
+
+    if (@$replace == 0) {
+        $code = "return NULL;";
+        return $code;
+    }
+
     if (not defined $details) {
-        &err_exit("need a 'details' to replace with multiple operators") if (@$replace != 1);
+        &err_exit("need a 'details' to replace with multiple operators")
+            if (@$replace > 1);
         my $rep_optype = (split ' ', $replace->[0])[0];
         my $rep_desc = &find_op_desc($rep_optype);
         # TODO: check validation
@@ -571,42 +582,42 @@ sub gen_copy_param {
     given ($type) {
         when ("char *") {
             $code = <<EOF;
-ln_param_assign_string($pe, $rhs);
+ln_param_set_string($pe, $rhs);
 EOF
         }
         when ("char **") {
             $code = <<EOF;
-ln_param_assign_array_string($pe, $len, (const char **)($rhs));
+ln_param_set_array_string($pe, $len, (const char **)($rhs));
 EOF
         }
         when (/^int \*$/) {
             $code = <<EOF;
-ln_param_assign_satu_array_int($pe, $len, $rhs);
+ln_param_set_satu_array_int($pe, $len, $rhs);
 EOF
         }
         when (/^float \*$/) {
             $code = <<EOF;
-ln_param_assign_satu_array_float($pe, $len, $rhs);
+ln_param_set_satu_array_float($pe, $len, $rhs);
 EOF
         }
         when (/^double \*$/) {
             $code = <<EOF;
-ln_param_assign_satu_array_double($pe, $len, $rhs);
+ln_param_set_satu_array_double($pe, $len, $rhs);
 EOF
         }
         when (/^ln_bool \*$/) {
             $code = <<EOF;
-ln_param_assign_array_bool($pe, $len, $rhs);
+ln_param_set_array_bool($pe, $len, $rhs);
 EOF
         }
         when (/^(int|float|double)$/) {
             $code = <<EOF;
-ln_param_assign_satu_number($pe, (double)($rhs));
+ln_param_set_satu_number($pe, (double)($rhs));
 EOF
         }
         when (/^ln_bool$/) {
             $code = <<EOF;
-ln_param_assign_bool($pe, $rhs);
+ln_param_set_bool($pe, $rhs);
 EOF
         }
         default {
@@ -655,13 +666,13 @@ sub gen_overall_funcs {
     my $name = shift;
 
     my $tpl = <<EOF;
-void ln_expander_init_$name(void **context_p)
+void ln_expander_init_$name(void **priv_p)
 {
     ep_funcs_hash = ln_hash_create(ln_str_hash, ln_str_cmp, NULL, NULL);
     ln_hash_init(ep_funcs_hash, init_ep_funcs);
 }
 
-void ln_expander_cleanup_$name(void **context_p)
+void ln_expander_cleanup_$name(void **priv_p)
 {
     ln_hash_free(ep_funcs_hash);
 }
@@ -725,10 +736,10 @@ sub add_to_arch_file {
 
     my $declare = "extern ln_list *ln_expander_${name}(const ln_op *op, const ln_dfg *dfg, int *match);\n";
     my $item = "    ln_expander_${name},\n";
-    my $init_func = "extern void ln_expander_init_${name}(void **context_p);\n";
-    my $init_func_exec = "    ln_expander_init_${name}(context_p);\n";
-    my $cleanup_func = "extern void ln_expander_cleanup_${name}(void **context_p);\n";
-    my $cleanup_func_exec = "    ln_expander_cleanup_${name}(context_p);\n";
+    my $init_func = "extern void ln_expander_init_${name}(void **priv_p);\n";
+    my $init_func_exec = "    ln_expander_init_${name}(priv_p);\n";
+    my $cleanup_func = "extern void ln_expander_cleanup_${name}(void **priv_p);\n";
+    my $cleanup_func_exec = "    ln_expander_cleanup_${name}(priv_p);\n";
 
     copy($arch_file, "${arch_file}.bak")
         or die "Cannot backup file ${arch_file}: $!";
@@ -1244,6 +1255,19 @@ sub array_slice {
         $code = "(${element_type}[]){$array_str}";
     }
     ($type, $code, $len);
+}
+
+sub gen_custom {
+    my $top = shift;
+    my $code = shift;
+
+    if (exists $top->{custom_before}) {
+        $code = $top->{custom_before}."\n\n".$code;
+    }
+    if (exists $top->{custom_after}) {
+        $code = $code."\n\n".$top->{custom_after};
+    }
+    $code;
 }
 
 sub find_op_desc {

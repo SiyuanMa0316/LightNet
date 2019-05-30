@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -212,16 +212,16 @@ void *ln_hash_find(ln_hash *hash, const void *key)
 
 /* in case of NULL value */
 int ln_hash_find_extended(ln_hash *hash, const void *key,
-                          void **origin_key, void **value)
+                          void **found_key, void **found_value)
 {
     int hash_value = hash->hash_func(key);
     int idx = index_of(hash_value, hash->capacity);
     for (hash_entry *e = hash->table[idx]; e; e = e->next) {
         if (e->hash_value == hash_value && !hash->cmp_func(key, e->key)) {
-            if (origin_key)
-                *origin_key = e->key;
-            if (value)
-                *value = e->value;
+            if (found_key)
+                *found_key = e->key;
+            if (found_value)
+                *found_value = e->value;
             return 1;
         }
     }

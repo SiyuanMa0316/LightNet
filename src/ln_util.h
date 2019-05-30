@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,12 +47,17 @@ typedef void *(*ln_copy_func)(void *dst, const void *src, size_t n);
 
 #define LN_MAXLINE 4096
 
+#define LN_TIMEIT_START { double _t1, _t2; _t1 = ln_clock();
+#define LN_TIMEIT_END(msg, varg...)                             \
+    _t2 = ln_clock(); ln_msg_info(msg"%.6fs", ##varg, _t2 - _t1); }
+
 #ifdef __cplusplus
 #define LN_CPPSTART extern "C" {
 #define LN_CPPEND }
 LN_CPPSTART
 #endif
 
+char *ln_sprint_version(char *buf);
 void *ln_alloc(size_t size);
 void *ln_realloc(void *ptr, size_t size);
 char *ln_strdup(const char *s);
@@ -79,6 +84,8 @@ int ln_direct_cmp(const void *p1, const void *p2);
 uint32_t ln_str_hash(const void *key);
 int ln_str_cmp(const void *p1, const void *p2);
 double ln_clock(void);
+void ln_img_submean(const unsigned char *data, const float *mean, float *out,
+                    int H, int W, int C);
 
 void ln_err_msg(const char *fmt, ...);
 void ln_err_cont(int error, const char *fmt, ...);

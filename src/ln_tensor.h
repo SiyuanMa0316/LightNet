@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -88,6 +88,9 @@ int ln_tensor_table_insert(ln_hash *table, ln_tensor_entry *entry);
 int ln_tensor_table_remove(ln_hash *table, const char *name);
 ln_tensor_entry *ln_tensor_table_find(ln_hash *table, const char *name);
 void ln_tensor_table_free(ln_hash *table);
+void ln_tensor_table_set_data(ln_hash *table, const char *name, const void *data);
+void *ln_tensor_table_get_data(ln_hash *table, const char *name, void *data);
+size_t ln_tensor_table_data_size(ln_hash *table, const char *name);
 void ln_tensor_table_load_trt_weight_file(ln_hash *table, const char *file);
 
 #ifdef __cplusplus

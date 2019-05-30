@@ -38,7 +38,7 @@ my $arch = shift @ARGV;
 
 my $code_str = <<EOF;
 /*
- * Copyright (c) 2019 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,14 +84,14 @@ ln_combiner_func cb_funcs_${arch}[] = {
 
 /* end of declare ${arch} init funcs */
 
-static void init_${arch}(void **context_p)
+static void init_${arch}(void **priv_p)
 {
 /* end of exec ${arch} init funcs */
 }
 
 /* end of declare ${arch} cleanup funcs */
 
-static void cleanup_${arch}(void **context_p)
+static void cleanup_${arch}(void **priv_p)
 {
 /* end of exec ${arch} cleanup funcs */
 }

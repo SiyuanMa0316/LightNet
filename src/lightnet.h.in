@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,6 @@
 #include "ln_context.h"
 #include "ln_arch.h"
 #include "ln_json.h"
-#include "ln_cJSON.h"
 #include "ln_queue.h"
 #include "ln_util.h"
 #include "ln_param.h"

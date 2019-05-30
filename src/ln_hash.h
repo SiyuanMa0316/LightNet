@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,7 @@ void ln_hash_init(ln_hash *hash, ln_hash_init_entry *init_array);
 int ln_hash_insert(ln_hash *hash, const void *key, void *value);
 void *ln_hash_find(ln_hash *hash, const void *key);
 int ln_hash_find_extended(ln_hash *hash, const void *key,
-                          void **origin_key, void **value);
+                          void **found_key, void **found_value);
 int ln_hash_remove(ln_hash *hash, const void *key);
 int ln_hash_size(ln_hash *hash);
 

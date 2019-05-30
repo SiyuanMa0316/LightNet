@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
 #ifndef _LN_OP_H_
 #define _LN_OP_H_
 
+#include <stdarg.h>
 #include <math.h>
 #include "ln_mem.h"
 #include "ln_tensor.h"
@@ -101,6 +102,10 @@ int ln_op_table_insert(ln_hash *table, ln_op *op);
 int ln_op_table_remove(ln_hash *table, const char *name);
 ln_op *ln_op_table_find(ln_hash *table, const char *name);
 void ln_op_table_free(ln_hash *table);
+void ln_op_table_vset_param(ln_hash *table, const char *opname,
+                            const char *pname, va_list ap);
+void ln_op_table_set_param(ln_hash *table, const char *opname,
+                           const char *pname, ...);
 
 #ifdef __cplusplus
 LN_CPPEND

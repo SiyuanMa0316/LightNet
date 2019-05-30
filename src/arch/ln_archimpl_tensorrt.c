@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,11 +35,11 @@ static ln_op *ops_tensorrt[] = {
     NULL
 };
 
-extern ln_list *ln_expander_tensorrt_expander(const ln_op *op, const ln_dfg *dfg, int *match);
+extern ln_list *ln_expander_expander_tensorrt(const ln_op *op, const ln_dfg *dfg, int *match);
 /* end of declare tensorrt expanders */
 
 ln_expander_func ep_funcs_tensorrt[] = {
-    ln_expander_tensorrt_expander,
+    ln_expander_expander_tensorrt,
 /* end of tensorrt expanders */
     NULL
 };
@@ -54,21 +54,21 @@ ln_combiner_func cb_funcs_tensorrt[] = {
     NULL
 };
 
-extern void ln_expander_init_tensorrt_expander(void **context_p);
+extern void ln_expander_init_expander_tensorrt(void **priv_p);
 /* end of declare tensorrt init funcs */
 
-static void init_tensorrt(void **context_p)
+static void init_tensorrt(void **priv_p)
 {
-    ln_expander_init_tensorrt_expander(context_p);
+    ln_expander_init_expander_tensorrt(priv_p);
 /* end of exec tensorrt init funcs */
 }
 
-extern void ln_expander_cleanup_tensorrt_expander(void **context_p);
+extern void ln_expander_cleanup_expander_tensorrt(void **priv_p);
 /* end of declare tensorrt cleanup funcs */
 
-static void cleanup_tensorrt(void **context_p)
+static void cleanup_tensorrt(void **priv_p)
 {
-    ln_expander_cleanup_tensorrt_expander(context_p);
+    ln_expander_cleanup_expander_tensorrt(priv_p);
 /* end of exec tensorrt cleanup funcs */
 }
 

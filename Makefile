@@ -18,7 +18,7 @@ BIN_MMM = $(BIN).$(MAJOR).$(MINOR).$(MICRO)
 OBJ_A = $(OBJ_DIR)/$(LIBTARGET_A)
 OBJ_SO = $(OBJ_DIR)/$(LIBTARGET_SO)
 OBJ_BIN = $(OBJ_DIR)/$(BIN)
-SRC_HEADERS = $(wildcard $(SRC_DIR)/*.h)
+SRC_HEADERS = $(wildcard $(SRC_DIR)/ln_*.h)
 
 BUILD_DIR ?= build
 BUILD_INCLUDE_DIR = $(BUILD_DIR)/include/$(TARGET)
@@ -66,10 +66,26 @@ ifeq ($(WITH_TENSORRT), yes)
 CONFIG_DEFINES += "LN_TENSORRT"
 endif
 
+ifeq ($(WITH_PYTHON), yes)
+PYTHON_TARGET = py$(TARGET)
+PYTHON_DIR = tools/py$(TARGET)
+ifeq ($(PYTHON_USER), yes)
+INSTALL_PYTHON = (cd $(PYTHON_DIR) && $(PYTHON_CMD) setup.py install --user --record .install-log)
+else
+INSTALL_PYTHON = (cd $(PYTHON_DIR) && $(PYTHON_CMD) setup.py install --prefix $(PYTHON_PREFIX) --record .install-log)
+endif
+UNINSTALL_PYTHON = perl tools/uninstallpy.pl $(PYTHON_DIR)/.install-log $(PYTHON_TARGET)
+else
+INSTALL_PYTHON =
+UNINSTALL_PYTHON =
+endif
+
 ifeq ($(DOC), yes)
 MAKE_DOC = mkdocs build -c -d $(BUILD_DOC)
+INSTALL_DOC_CMD = cp -r $(BUILD_DOC) $(INSTALL_DOC)
 else
 MAKE_DOC =
+INSTALL_DOC_CMD =
 endif
 
 ifdef VERBOSE
@@ -110,6 +126,8 @@ endef
 define make-bin
 $(AT)cp $(OBJ_BIN) $(BUILD_BIN_MMM)
 $(AT)ln -sf $(BUILD_BIN_MMM) $(BUILD_BIN)
+# TODO: orgnize tools
+$(AT)cp tools/ir2json.pl $(BUILD_BIN_DIR)/ir2json.pl
 endef
 
 define make-doc
@@ -124,8 +142,10 @@ ln -sf $(INSTALL_SO_MMM) $(INSTALL_SO_MM)
 ln -sf $(INSTALL_SO_MMM) $(INSTALL_SO)
 cp $(BUILD_BIN_MMM) $(INSTALL_BIN_MMM)
 ln -sf $(INSTALL_BIN_MMM) $(INSTALL_BIN)
-cp -r $(BUILD_DOC) $(INSTALL_DOC)
+cp $(BUILD_BIN_DIR)/ir2json.pl $(INSTALL_BIN_DIR)/ir2json.pl
+$(INSTALL_DOC_CMD)
 perl tools/gen_pkgconfig.pl $(TARGET) $(INSTALL_DIR) $(MAJOR).$(MINOR).$(MICRO) $(PKGCONFIG_DIR) "$(REQUIRES)" "A light-weight neural network compiler for different software/hardware backends."
+$(INSTALL_PYTHON)
 endef
 
 define make-uninstall
@@ -138,6 +158,7 @@ rm -f $(INSTALL_BIN)
 rm -f $(INSTALL_BIN_MMM)
 rm -rf $(INSTALL_DOC)
 rm -f $(PKGCONFIG_DIR)/$(TARGET).pc
+$(UNINSTALL_PYTHON)
 endef
 
 define make-clean

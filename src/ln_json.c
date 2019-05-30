@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Zhao Zhixu
+ * Copyright (c) 2018-2019 Zhao Zhixu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 #include <string.h>
 #include <assert.h>
-#include "ln_cJSON.h"
+#include "cJSON.h"
 #include "ln_json.h"
 
 #define MASK_32L 0xffffffff
