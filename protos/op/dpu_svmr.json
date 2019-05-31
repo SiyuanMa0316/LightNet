@@ -1,0 +1,27 @@
+{
+    "ops":[
+        {
+            "optype": "dpu_svmr",
+            "author": "Ma Siyuan",
+            "arch": "dpu",
+            "tensors_in":[
+                // [channel, width]
+                {"arg_name": "src_line", "mtype": "LN_MEM_BRAM", "ndim": 2}
+            ],
+            "tensors_out":[
+                {"arg_name": "dst", "mtype": "LN_MEM_CPU", 
+                    "ndim": "src->ndim", "dtype": "src->dtype",
+                    //为什么这里没有{}
+                    "custom":'''
+    dst_dims = ln_alloc(sizeof(int)*2);
+    dst_dims[0] = src_line->dims[0];
+    dst_dims[1] = src_line->dims[1];
+    ''',
+                }
+            ],
+            "params":[]
+            "run": ""
+        }
+
+    ]
+}

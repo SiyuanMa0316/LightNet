@@ -1,0 +1,61 @@
+{
+    "ops":[
+        {
+            "optype": "dpu_dwconv",
+            "author": "Ma Siyuan",
+            "arch": "dpu",
+            "tensors_in": [
+                // [channel, width]
+                {"arg_name": "src_line0", "mtype": "LN_MEM_BRAM", "ndim": 2},
+                {"arg_name": "src_line1", "mtype": "LN_MEM_BRAM", "ndim": 2},
+                {"arg_name": "src_line2", "mtype": "LN_MEM_BRAM", "ndim": 2},
+                //{"arg_name": "src1", "mtype": "LN_MEM_BRAM", "ndim": 3},
+
+                // [input_channel, height, width]
+                {"arg_name": "weight", "mtype": "LN_MEM_BRAM", "ndim": 4},
+                
+                {"arg_name": "bias", "mtype": "LN_MEM_BRAM", "ndim": 1,
+                "custom": '''
+{
+    char shape1[LN_MAXLINE];
+    char shape2[LN_MAXLINE];
+    ln_opck_satisfy_msg(bias->dims[0] == weight->dims[0], "'bias' (%s) should have the size of dims[0] of 'weight' (%s)", ln_sprint_shape(shape1, bias->ndim, bias->dims), ln_sprint_shape(shape2, weight->ndim, weight->dims));
+}
+'''
+                }
+            ],
+            "tensors_out":[
+                // [channel, width]
+                {"arg_name": "dst", "mtype": "LN_MEM_BRAM", 
+                "ndim": "src->ndim", "dtype": "src->dtype",
+                //为什么这里没有{}
+                "custom":'''
+dst_dims = ln_alloc(sizeof(int)*2);
+dst_dims[0] = weight->dims[0];
+dst_dims[1] = ln_compute_output_dim(src_line0->dims[1], size[1], stride[0], padding[0] + padding[1]);
+''',
+            }
+            ],
+            "params": [
+                // [height, width]
+                {"arg_name": "size", "ptype": "LN_PARAM_ARRAY_NUMBER",
+                    "realtype": "int", "len": 2, "ge": 1,
+                    "custom": '''
+{
+    char shape1[LN_MAXLINE];
+    char shape2[LN_MAXLINE];
+    ln_opck_satisfy_msg(size[0] == weight->dims[2] && size[1] == weight->dims[3], "'size' (%s) should be equal to the last two dimensions of 'weight' (%s)", ln_sprint_shape(shape1, size_entry->array_len, size), ln_sprint_shape(shape2, weight->ndim, weight->dims));
+}
+   '''
+                },
+                // [width]
+                {"arg_name": "stride", "ptype": "LN_PARAM_ARRAY_NUMBER",
+                    "realtype": "int", "len": 1, "ge": 1},
+                // [left, right]
+                {"arg_name": "padding", "ptype": "LN_PARAM_ARRAY_NUMBER",
+                "realtype": "int", "len": 2, "ge": 0}
+                
+            ]
+        },
+    ]
+}
