@@ -392,3 +392,200 @@ edges and nodes, and a list of its next edges and nodes.
     Print the graph to stream `fp`. Graph node data are printed by `print_node`.
     Graph edge data are printed by `print_edge`.
     
+## Memory Model
+
+Every computing device in heterogeneous platforms may have its own type of
+memory. LightNet uses an enumeration type `ln_mem_type` to describe them.
+Every `ln_mem_type` should have an instance of `ln_mem_info` in `ln_mem.c`.
+
+    :::c
+    enum ln_mem_type {
+        LN_MEM_NONE = 0,
+        LN_MEM_CPU,
+    #ifdef LN_CUDA
+        LN_MEM_CUDA,
+    #endif
+    /* ... may be other mem types here */
+        LN_MEM_TYPE_SIZE
+    };
+    typedef enum ln_mem_type ln_mem_type;
+
+    struct ln_mem_info {
+        const char  *name;
+        void      *(*alloc_func)(size_t n);
+        void       (*free_func)(void *p);
+        void      *(*memset_func)(void *s, int c, size_t n);
+        size_t       max_size;
+        size_t       align_size;
+    };
+    typedef struct ln_mem_info ln_mem_info;
+
+Every `ln_mem_type` has its own information, in which `alloc_func`, 
+`free_func`, `memset_func` are its memory operations, as `malloc`, `free`,
+`memset` in the standard C library. `max_size` is the maximum bytes the memory
+type can store. `align_size` is the alignment bytes the memory type requires.
+
+`ln_mem_type` supports the following operations:
+
+- **`const char *ln_mem_type_name(ln_mem_type mtype)`**
+
+    Return the name of `mtype`.
+
+- **`const ln_mem_info ln_mem_type_info(ln_mem_type mtype)`**
+
+    Return the `ln_mem_info` of `mtype`.
+
+- **`ln_copy_func ln_mem_type_copy_func(ln_mem_type dst_mtype, ln_mem_type src_mtype)`**
+
+    Return the copy function from `src_mtype` to `dst_mtype`, as `memcpy` in the
+    standard C library.
+
+Besides, LightNet uses virtual memory pools to make overall arrangements for
+memory allocations and releases. This step pre-plans the memory offsets of 
+tensors, which can be converted to real memory addresses in run time.
+`ln_mem_pool` is the virtual memory pool structure.
+
+`ln_mem_pool` supports the following operations:
+
+- **`ln_mem_pool *ln_mem_pool_create(size_t size, size_t align_size)`**
+  
+    Create a virtual memory pool.
+
+- **`void ln_mem_pool_free(ln_mem_pool *mem_pool)`**
+
+    Free a virtual memory pool.
+
+- **`size_t ln_mem_pool_alloc(ln_mem_pool *mem_pool, size_t size)`**
+
+    Return the allocated memory offset (starting from 0) from the memory pool.
+
+- **`void ln_mem_pool_dealloc(ln_mem_pool *mem_pool, size_t addr)`**
+
+    Deallocate a memory offset.
+
+- **`int ln_mem_pool_exist(ln_mem_pool *mem_pool, size_t addr)`**
+
+    Test if a memory offset is allocated before.
+
+- **`void ln_mem_pool_dump(ln_mem_pool *mem_pool, FILE *fp)`**
+
+    Dump the memory layout of the memory pool.
+
+- **`ln_hash *ln_mem_pool_table_create(void)`**
+
+    Create a hash table of all memory pools. 
+    The table takes `ln_mem_type` as keys and `ln_mem_pool` as values.
+
+- **`void ln_mem_pool_table_free(ln_hash *mpt)`**
+
+    Free the memory pool hash table returned by `ln_mem_pool_table_create`.
+
+## Tensor
+
+LightNet uses `ln_tensor` as the basic data storage structure.
+`ln_tensor` further uses [TensorLight](https://github.com/zhaozhixu/TensorLight)
+as its basic tensor operation library, which is seperated from LightNet on
+purpose so that it can be used widely beyond LightNet.
+
+TensorLight implements many universal tensor operations. There are some simple
+operations such as slice, transpose, concatation, relu, as well as some 
+complicated operations such as bounding boxes' coordinate transformation,
+YOLO's object detection. Developers are welcomed to add their own useful
+operations to TensorLight, which can be used not only in LightNet, but also 
+in other projects.
+
+In both projects, a tensor refers to a `tl_tensor` structure, which has the
+tensor's meta infomation and its data pointer.
+
+    :::c
+    struct tl_tensor {
+        tl_dtype          dtype;          /* data type */
+        int               len;            /* number of elements */
+        int               ndim;           /* number of dimensions */
+        int              *dims;           /* array of dimensions */
+        void             *data;           /* data pointer */
+        struct tl_tensor *owner;          /* data owner, NULL if it's itself */
+        void             *backend_data;   /* for other backend dependent data */
+    };
+    typedef struct tl_tensor tl_tensor;
+    
+A tensor's data type is represented by a enumeration type `tl_dtype`. It 
+supports many common data types such as double, float, 32/16/8 bit 
+signed/unsigned integers, and bool.
+
+    :::c
+    enum tl_dtype {
+        TL_DTYPE_INVALID = -1,
+        TL_DOUBLE = 0,
+        TL_FLOAT,
+        TL_INT32,
+        TL_INT16,
+        TL_INT8,
+        TL_UINT32,
+        TL_UINT16,
+        TL_UINT8,
+        TL_BOOL,
+        TL_DTYPE_SIZE
+    };
+    typedef enum tl_dtype tl_dtype;
+    
+`tl_tensor` supports many tensor operations, see [TensorLight](https://github.com/zhaozhixu/TensorLight) for more details.
+
+In LightNet, all tensors in a NN model are managed by a tensor table. The tensor
+table is a hash table, with tensors' names as its keys and tensor table entries
+as its values. The tensor table entry structure is defined as follows.
+
+    :::c
+    /* NOTE: ALWAYS access tensor entry via its name in tensor table, since the
+       entry may be not the same during passes. It is owned by the tensor table. */
+    struct ln_tensor_entry {
+        char        *name;          /* tensor name */
+        tl_tensor   *tensor;        /* pointer to the underlying tl_tensor */
+        char        *owner;         /* owner tensor's name of the tensor's data */
+        char        *creater;       /* operator name who creates the tensor */
+        size_t       offset;        /* offset address of the tensor's data */
+        int          isstatic;      /* the tensor is static or not */
+        ln_mem_type  mtype;         /* memory type */
+    };
+    typedef struct ln_tensor_entry ln_tensor_entry;
+
+Every tensor must be created by an operator, and `creater` records that
+operator's name. Considering the computing efficiency, some tensors may share
+the same underlying data pointer, in which case `owner` records the name of the
+tensor who actually owns the data. `offset` is the relative address assigned to
+the tensor in memory planning process, and it is initially 0, which is invalid 
+at run time. Some tensors' memory may not be freed after allocation, in which
+case `isstatic` should be labeled as 1 to indicate that it's static. Finally,
+`mtype` is the memory type of the tensor's data.
+
+`ln_tensor_entry` supports the following operations:
+
+- **`ln_tensor_entry *ln_tensor_entry_create(const char *name, tl_tensor *tensor)`**
+- **`void ln_tensor_entry_free(ln_tensor_entry *entry)`**
+- **`void ln_tensor_entry_free_tensor_too(ln_tensor_entry *entry)`**
+- **`void ln_tensor_entry_set_owner(ln_tensor_entry *entry, ln_hash *tensor_table, char *direct_owner)`**
+- **`void ln_tensor_entry_set_creater(ln_tensor_entry *entry, const char *creater)`**
+
+When removing a tensor or inserting a different tensor with the same name 
+as another tensor, the tensor table will free the old table entry and its 
+`tensor` field, but not free `tensor->data`. So we should always insert tensors 
+with `NULL` data.
+
+Besides tensor table entry, this mudule also defines a tensor list entry
+structure `ln_tensor_list_entry`.
+
+    :::c
+    struct ln_tensor_list_entry {
+        char            *name;
+        char            *arg_name;
+        size_t           offset;
+    };
+    typedef struct ln_tensor_list_entry ln_tensor_list_entry;
+    
+`ln_tensor_list_entry` is used in an operator's input/output tensor list. `name`
+and `offset` are the same as those in the tensor's table entry. `name` is used
+to find the tensor table entry from the operator. `offset` is used to store
+the memory-planned address in the optimized output operator stream. `arg_name`
+is the argument name of the tensor in the operator, such as "stride" in an 
+"conv2d" operator.
+

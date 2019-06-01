@@ -28,13 +28,13 @@
 #include "ln_mem.h"
 
 /* tensor entry used in tensor table */
-/* NOTE: ALWAYS access tensor entry via its name in tensor_table, since the
-   entry may be not the same during passes. It is owned by the tensor_table. */
+/* NOTE: ALWAYS access tensor entry via its name in tensor table, since the
+   entry may be not the same during passes. It is owned by the tensor table. */
 struct ln_tensor_entry {
     char        *name;
     tl_tensor   *tensor;
-    char        *owner;         /* owner tensor name of the tensor data */
-    char        *creater;       /* name of the creater op */
+    char        *owner;         /* owner tensor's name of the tensor's data */
+    char        *creater;       /* operator name who creates the tensor */
     size_t       offset;
     int          isstatic;
     ln_mem_type  mtype;
@@ -78,9 +78,9 @@ void ln_tensor_entry_set_owner(ln_tensor_entry *entry, ln_hash *tensor_table,
 void ln_tensor_entry_set_creater(ln_tensor_entry *entry, const char *creater);
 
 /*
- * When removing-tensor or inserting-different-tensor-with-same-name
- * or freeing-table happens, tensor_table will free the table entry and
- * the tensor, but not free the tensor->data.
+ * When removing tensor or inserting different tensor with same name
+ * or freeing table, tensor_table will free the table entry and
+ * the tensor, but not free tensor->data.
  * We should always insert tensors with NULL data.
  */
 ln_hash *ln_tensor_table_create(void);
