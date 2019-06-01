@@ -381,23 +381,7 @@ static ln_list *cb_func_tensorrt(const ln_list *win_ops, size_t win_size,
     else
         return NULL;
 
-    for (i = 0, l = (ln_list *)win_ops; i < win_size && l;) {
-        op = l->data;
-        if (!ln_streq(op->op_arg->optype, "tensorrt")) {
-            i++, l = l->next;
-            no_trt_op = ln_op_copy(op);
-            new_ops = ln_list_append(new_ops, no_trt_op);
-            continue;
-        }
-        trt_op = ln_op_copy(op);
-        for (i++, l = l->next; i < win_size && l; i++, l = l->next) {
-            op = l->data;
-            if (!ln_streq(op->op_arg->optype, "tensorrt"))
-                break;
-            add_trt_to_trt(trt_op, op, dfg);
-        }
-        new_ops = ln_list_append(new_ops, trt_op);
-    }
+    
 
     return new_ops;
 }
