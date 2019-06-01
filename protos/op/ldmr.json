@@ -6,7 +6,7 @@
             "arch": "none",
             "tensors_in":[
                 // [channel, width]
-                {"arg_name": "src_line", "mtype": "LN_MEM_NONE", "ndim": 2}
+                {"arg_name": "src", "mtype": "LN_MEM_NONE", "ndim": 2}
             ],
             "tensors_out":[
                 {"arg_name": "dst", "mtype": "LN_MEM_NONE", 
@@ -16,6 +16,7 @@
     dst_dims = ln_alloc(sizeof(int)*2);
     dst_dims[0] = src_line->dims[0];
     dst_dims[1] = src_line->dims[1];
+   // dst_dims[2] = src_line->dims[2];
     ''',
                 }
             ],
